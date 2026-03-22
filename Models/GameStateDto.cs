@@ -8,6 +8,7 @@ public class PlayerDto
     public int Score { get; set; }
     public bool IsEliminated { get; set; }
     public bool IsConnected { get; set; }
+    public bool HasOpenedSet { get; set; }
     public List<Card> Hand { get; set; } = new();
 }
 
@@ -20,6 +21,6 @@ public class GameStateDto
     public string CurrentPlayerId { get; set; } = "";
     public GamePhase Phase { get; set; }
     public string? WinnerId { get; set; }
-    public bool HasDiscardedThisTurn { get; set; }
+    public bool HasDrawnCard { get; set; }
     public string? NewlyDrawnCardId { get; set; }
 }

@@ -254,6 +254,12 @@ body {
     color: #FFD700;
 }
 
+.turn-hint {
+    font-weight: normal;
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
 .opponents-area {
     display: flex;
     flex-wrap: wrap;
@@ -417,6 +423,7 @@ body {
     border: 3px solid #FFD700;
     background: #FFFACD;
     transform: translateY(-15px);
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
 }
 
 .card-highlighted {
@@ -424,13 +431,28 @@ body {
 }
 
 .card-newly-drawn {
-    animation: pulse 1s ease-in-out;
+    animation: drawnCardPulse 1.5s ease-in-out;
     border: 3px solid #00BFFF;
+    box-shadow: 0 0 16px rgba(0, 191, 255, 0.7);
 }
 
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
+@keyframes drawnCardPulse {
+    0% { transform: scale(0.8); opacity: 0; }
+    30% { transform: scale(1.15); opacity: 1; }
+    60% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.drawn-card-preview {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    animation: slideDown 0.4s ease-out;
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
 }
 
 .scoreboard {

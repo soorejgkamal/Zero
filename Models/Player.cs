@@ -8,5 +8,6 @@ public class Player
     public int Score { get; set; } = 0;
     public bool IsEliminated { get; set; } = false;
     public bool IsConnected { get; set; } = true;
+    public bool HasOpenedSet { get; set; } = false;
     public string ConnectionId { get; set; } = "";
 }
