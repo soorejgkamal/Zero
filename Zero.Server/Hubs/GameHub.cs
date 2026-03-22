@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using System.Collections.Concurrent;
 using Zero.Shared.Models;
 using Zero.Shared.DTOs;
 using Zero.Server.Services;
@@ -7,12 +8,18 @@ namespace Zero.Server.Hubs;
 
 public class GameHub : Hub
 {
-    private static readonly Dictionary<string, GameRoom> _rooms = new();
-    private static readonly Dictionary<string, string> _connectionToRoom = new();
-    private static readonly Dictionary<string, string> _connectionToPlayer = new();
+    private static readonly ConcurrentDictionary<string, GameRoom> _rooms = new();
+    private static readonly ConcurrentDictionary<string, string> _connectionToRoom = new();
+    private static readonly ConcurrentDictionary<string, string> _connectionToPlayer = new();
 
     public async Task CreateRoom(string playerName)
     {
+        playerName = playerName?.Trim() ?? "";
+        if (string.IsNullOrEmpty(playerName) || playerName.Length > 30)
+        {
+            await Clients.Caller.SendAsync("Error", "Invalid player name");
+            return;
+        }
         var roomId = GenerateRoomCode();
         var room = new GameRoom { RoomId = roomId };
         var player = new Player 
@@ -33,6 +40,13 @@ public class GameHub : Hub
 
     public async Task JoinRoom(string roomId, string playerName)
     {
+        playerName = playerName?.Trim() ?? "";
+        if (string.IsNullOrEmpty(playerName) || playerName.Length > 30)
+        {
+            await Clients.Caller.SendAsync("Error", "Invalid player name");
+            return;
+        }
+        roomId = roomId?.Trim().ToUpper() ?? "";
         if (!_rooms.TryGetValue(roomId, out var room))
         {
             await Clients.Caller.SendAsync("Error", "Room not found");
@@ -310,8 +324,8 @@ public class GameHub : Hub
                     player.IsConnected = false;
                 await BroadcastGameState(room, null);
             }
-            _connectionToRoom.Remove(Context.ConnectionId);
-            _connectionToPlayer.Remove(Context.ConnectionId);
+            _connectionToRoom.TryRemove(Context.ConnectionId, out _);
+            _connectionToPlayer.TryRemove(Context.ConnectionId, out _);
         }
         await base.OnDisconnectedAsync(exception);
     }
