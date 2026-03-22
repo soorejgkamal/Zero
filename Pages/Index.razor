@@ -9,30 +9,13 @@
             <input type="text" @bind="PlayerName" placeholder="Enter your name" class="lobby-input" />
             
             <div class="lobby-actions">
-                <div class="action-card">
-                    <h3>Create a Room</h3>
-                    <p class="action-description">Start a new game and invite friends</p>
-                    <div class="player-count-selector">
-                        <label>Number of Players:</label>
-                        <div class="player-count-buttons">
-                            @for (int i = 2; i <= 6; i++)
-                            {
-                                var count = i;
-                                <button class="player-count-btn @(MaxPlayers == count ? "selected" : "")"
-                                        @onclick="() => MaxPlayers = count">@count</button>
-                            }
-                        </div>
-                    </div>
-                    <button @onclick="CreateRoom" class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(PlayerName)">
-                        Create Room
-                    </button>
-                </div>
+                <button @onclick="CreateRoom" class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(PlayerName)">
+                    Create Room
+                </button>
 
                 <div class="action-divider"><span>OR</span></div>
 
-                <div class="action-card">
-                    <h3>Join a Room</h3>
-                    <p class="action-description">Enter a room code to join an existing game</p>
+                <div class="join-room">
                     <input type="text" @bind="JoinRoomCode" placeholder="Room Code" class="lobby-input room-code-input" maxlength="6" />
                     <button @onclick="JoinRoom" class="btn btn-secondary" disabled="@(string.IsNullOrWhiteSpace(PlayerName) || string.IsNullOrWhiteSpace(JoinRoomCode))">
                         Join Room

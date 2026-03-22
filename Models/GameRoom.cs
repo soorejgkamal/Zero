@@ -13,6 +13,6 @@ public class GameRoom
     public GamePhase Phase { get; set; } = GamePhase.Lobby;
     public string? LastDrawPlayerId { get; set; }
     public string? WinnerId { get; set; }
-    public bool HasDiscardedThisTurn { get; set; } = false;
+    public bool HasDrawnCard { get; set; } = false;
     public int MaxPlayers { get; set; } = 6;
 }

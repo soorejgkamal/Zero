@@ -1,13 +1,25 @@
 @using Zero.Helpers
 
 <div class="hand-container">
+    @if (DrawnCardPreview != null)
+    {
+        <div class="drawn-card-preview">
+            <CardComponent 
+                card="@DrawnCardPreview" 
+                IsSelected="false"
+                IsNewlyDrawn="true"
+                IsHighlighted="false"
+                OnClick="@(() => {})" />
+        </div>
+    }
     <div class="hand-cards">
         @foreach (var card in SortedCards)
         {
             <CardComponent 
                 card="@card" 
                 IsSelected="@SelectedCardIds.Contains(card.Id)"
-                IsNewlyDrawn="@(card.Id == NewlyDrawnCardId)"
+                IsNewlyDrawn="false"
+                IsHighlighted="false"
                 OnClick="@(() => OnCardClick(card.Id))" />
         }
     </div>
@@ -19,7 +31,31 @@
     [Parameter] public string? NewlyDrawnCardId { get; set; }
     [Parameter] public EventCallback<string> OnCardSelected { get; set; }
 
+    private Card? DrawnCardPreview;
+    private string? LastPreviewedCardId;
+
     private List<Card> SortedCards => CardSorter.SortHand(Cards);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(NewlyDrawnCardId) && NewlyDrawnCardId != LastPreviewedCardId)
+        {
+            LastPreviewedCardId = NewlyDrawnCardId;
+            DrawnCardPreview = Cards.FirstOrDefault(c => c.Id == NewlyDrawnCardId);
+            if (DrawnCardPreview != null)
+            {
+                StateHasChanged();
+                await Task.Delay(1500);
+                DrawnCardPreview = null;
+                StateHasChanged();
+            }
+        }
+        else if (string.IsNullOrEmpty(NewlyDrawnCardId))
+        {
+            LastPreviewedCardId = null;
+            DrawnCardPreview = null;
+        }
+    }
 
     private async Task OnCardClick(string cardId)
     {

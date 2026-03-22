@@ -17,6 +17,14 @@
                         @if (IsMyTurn)
                         {
                             <strong>YOUR TURN</strong>
+                            @if (!CurrentState.HasDrawnCard)
+                            {
+                                <span class="turn-hint"> — Draw a card</span>
+                            }
+                            else
+                            {
+                                <span class="turn-hint"> — Play or Discard</span>
+                            }
                         }
                         else
                         {
@@ -46,8 +54,10 @@
                     @foreach (var seq in CurrentState.TableSets)
                     {
                         var placedByName = CurrentState.Players.FirstOrDefault(p => p.Id == seq.PlacedByPlayerId)?.Name ?? "Unknown";
-                        var canAddLeft = IsMyTurn && SelectedCards.Count == 1 && CanAddCardToSequence(seq, true);
-                        var canAddRight = IsMyTurn && SelectedCards.Count == 1 && CanAddCardToSequence(seq, false);
+                        var myPlayer = CurrentState.Players.FirstOrDefault(p => p.Id == GameService.PlayerId);
+                        var hasOpened = myPlayer?.HasOpenedSet ?? false;
+                        var canAddLeft = IsMyTurn && CurrentState.HasDrawnCard && hasOpened && SelectedCards.Count == 1 && CanAddCardToSequence(seq, true);
+                        var canAddRight = IsMyTurn && CurrentState.HasDrawnCard && hasOpened && SelectedCards.Count == 1 && CanAddCardToSequence(seq, false);
                         
                         <TableSetComponent 
                             Sequence="@seq" 
@@ -69,20 +79,20 @@
             <div class="player-actions">
                 @if (CurrentState.Phase == GamePhase.Playing && IsMyTurn)
                 {
-                    @if (SelectedCards.Count >= 3)
+                    @if (!CurrentState.HasDrawnCard)
                     {
-                        <button @onclick="OpenSet" class="btn btn-success">Open Set (@SelectedCards.Count cards)</button>
+                        <button @onclick="DrawCard" class="btn btn-primary">Draw Card</button>
                     }
-                    @if (!CurrentState.HasDiscardedThisTurn)
+                    else
                     {
+                        @if (SelectedCards.Count >= 3)
+                        {
+                            <button @onclick="OpenSet" class="btn btn-success">Open Set (@SelectedCards.Count cards)</button>
+                        }
                         @if (SelectedCards.Count == 1)
                         {
                             <button @onclick="DiscardCard" class="btn btn-warning">Discard</button>
                         }
-                    }
-                    else
-                    {
-                        <button @onclick="DrawCard" class="btn btn-primary">Draw Card</button>
                     }
                     <button @onclick="ClearSelection" class="btn btn-secondary">Clear Selection</button>
                 }
