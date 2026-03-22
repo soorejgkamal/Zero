@@ -69,22 +69,22 @@
             <div class="player-actions">
                 @if (CurrentState.Phase == GamePhase.Playing && IsMyTurn)
                 {
-                    @if (!CurrentState.HasDrawnThisTurn)
+                    @if (SelectedCards.Count >= 3)
                     {
-                        <button @onclick="DrawCard" class="btn btn-primary">Draw Card</button>
+                        <button @onclick="OpenSet" class="btn btn-success">Open Set (@SelectedCards.Count cards)</button>
                     }
-                    else
+                    @if (!CurrentState.HasDiscardedThisTurn)
                     {
-                        @if (SelectedCards.Count >= 3)
-                        {
-                            <button @onclick="OpenSet" class="btn btn-success">Open Set (@SelectedCards.Count cards)</button>
-                        }
                         @if (SelectedCards.Count == 1)
                         {
                             <button @onclick="DiscardCard" class="btn btn-warning">Discard</button>
                         }
-                        <button @onclick="ClearSelection" class="btn btn-secondary">Clear Selection</button>
                     }
+                    else
+                    {
+                        <button @onclick="DrawCard" class="btn btn-primary">Draw Card</button>
+                    }
+                    <button @onclick="ClearSelection" class="btn btn-secondary">Clear Selection</button>
                 }
                 
                 @if (CurrentState.Phase == GamePhase.RoundEnd || CurrentState.Phase == GamePhase.GameOver)

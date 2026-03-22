@@ -105,7 +105,7 @@ public class GameHub : Hub
         room.CurrentPlayerIndex = 0;
         room.TableSets.Clear();
         room.DiscardPile.Clear();
-        room.HasDrawnThisTurn = false;
+        room.HasDiscardedThisTurn = false;
         
         await Clients.Group(roomId).SendAsync("GameStarted");
         await BroadcastGameState(room, null);
@@ -122,9 +122,9 @@ public class GameHub : Hub
             await Clients.Caller.SendAsync("Error", "Not your turn");
             return;
         }
-        if (room.HasDrawnThisTurn)
+        if (!room.HasDiscardedThisTurn)
         {
-            await Clients.Caller.SendAsync("Error", "Already drawn this turn");
+            await Clients.Caller.SendAsync("Error", "Must discard before drawing");
             return;
         }
         
@@ -143,9 +143,9 @@ public class GameHub : Hub
         room.Deck.RemoveAt(0);
         currentPlayer.Hand.Add(card);
         room.LastDrawPlayerId = currentPlayer.Id;
-        room.HasDrawnThisTurn = true;
         
-        await BroadcastGameState(room, Context.ConnectionId, card.Id);
+        AdvanceTurn(room);
+        await BroadcastGameState(room, null, card.Id);
     }
 
     public async Task DiscardCard(string cardId)
@@ -159,9 +159,9 @@ public class GameHub : Hub
             await Clients.Caller.SendAsync("Error", "Not your turn");
             return;
         }
-        if (!room.HasDrawnThisTurn)
+        if (room.HasDiscardedThisTurn)
         {
-            await Clients.Caller.SendAsync("Error", "Must draw before discarding");
+            await Clients.Caller.SendAsync("Error", "Already discarded this turn");
             return;
         }
         
@@ -181,7 +181,7 @@ public class GameHub : Hub
             return;
         }
         
-        AdvanceTurn(room);
+        room.HasDiscardedThisTurn = true;
         await BroadcastGameState(room, null);
     }
 
@@ -302,9 +302,9 @@ public class GameHub : Hub
             await Clients.Caller.SendAsync("Error", "Not your turn");
             return;
         }
-        if (!room.HasDrawnThisTurn)
+        if (!room.HasDiscardedThisTurn)
         {
-            await Clients.Caller.SendAsync("Error", "Must draw a card before ending turn");
+            await Clients.Caller.SendAsync("Error", "Must discard a card before ending turn");
             return;
         }
         
@@ -360,7 +360,7 @@ public class GameHub : Hub
 
     private void AdvanceTurn(GameRoom room)
     {
-        room.HasDrawnThisTurn = false;
+        room.HasDiscardedThisTurn = false;
         var activePlayers = room.Players.Where(p => !p.IsEliminated).ToList();
         if (activePlayers.Count == 0) return;
         
@@ -403,7 +403,7 @@ public class GameHub : Hub
             CurrentPlayerId = currentPlayer?.Id ?? "",
             Phase = room.Phase,
             WinnerId = room.WinnerId,
-            HasDrawnThisTurn = room.HasDrawnThisTurn,
+            HasDiscardedThisTurn = room.HasDiscardedThisTurn,
             NewlyDrawnCardId = newlyDrawnCardId,
             Players = room.Players.Select(p => new PlayerDto
             {

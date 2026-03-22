@@ -20,6 +20,6 @@ public class GameStateDto
     public string CurrentPlayerId { get; set; } = "";
     public GamePhase Phase { get; set; }
     public string? WinnerId { get; set; }
-    public bool HasDrawnThisTurn { get; set; }
+    public bool HasDiscardedThisTurn { get; set; }
     public string? NewlyDrawnCardId { get; set; }
 }
