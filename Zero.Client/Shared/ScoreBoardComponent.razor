@@ -1,0 +1,24 @@
+@using Zero.Shared.DTOs
+
+<div class="scoreboard">
+    <h3>Players</h3>
+    <div class="scoreboard-players">
+        @foreach (var player in Players)
+        {
+            <div class="scoreboard-player @(player.Id == CurrentPlayerId ? "current-turn" : "") @(player.IsEliminated ? "eliminated" : "")">
+                <span class="player-name">@player.Name @(!player.IsConnected ? " (DC)" : "")</span>
+                <span class="player-cards">Cards: @player.CardCount</span>
+                <span class="player-score">Score: @player.Score</span>
+                @if (player.IsEliminated)
+                {
+                    <span class="eliminated-badge">ELIMINATED</span>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<PlayerDto> Players { get; set; } = new();
+    [Parameter] public string CurrentPlayerId { get; set; } = "";
+}
