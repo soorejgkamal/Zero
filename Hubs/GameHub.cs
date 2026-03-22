@@ -11,7 +11,7 @@ public class GameHub : Hub
     private static readonly ConcurrentDictionary<string, string> _connectionToRoom = new();
     private static readonly ConcurrentDictionary<string, string> _connectionToPlayer = new();
 
-    public async Task CreateRoom(string playerName)
+    public async Task CreateRoom(string playerName, int maxPlayers = 6)
     {
         playerName = playerName?.Trim() ?? "";
         if (string.IsNullOrEmpty(playerName) || playerName.Length > 30)
@@ -19,8 +19,9 @@ public class GameHub : Hub
             await Clients.Caller.SendAsync("Error", "Invalid player name");
             return;
         }
+        maxPlayers = Math.Clamp(maxPlayers, 2, 6);
         var roomId = GenerateRoomCode();
-        var room = new GameRoom { RoomId = roomId };
+        var room = new GameRoom { RoomId = roomId, MaxPlayers = maxPlayers };
         var player = new Player 
         { 
             Id = Guid.NewGuid().ToString(), 
@@ -68,7 +69,7 @@ public class GameHub : Hub
             await Clients.Caller.SendAsync("Error", "Game already in progress");
             return;
         }
-        if (room.Players.Count >= 6)
+        if (room.Players.Count >= room.MaxPlayers)
         {
             await Clients.Caller.SendAsync("Error", "Room is full");
             return;

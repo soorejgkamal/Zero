@@ -144,6 +144,12 @@
         GameService.OnGameStateUpdated += HandleGameStateUpdated;
         GameService.OnError += HandleError;
         GameService.OnRoundEnded += HandleRoundEnded;
+
+        // Use cached game state if available (handles race condition where state arrives before subscription)
+        if (GameService.CurrentGameState != null)
+        {
+            CurrentState = GameService.CurrentGameState;
+        }
     }
 
     private void HandleGameStateUpdated(GameStateDto state)

@@ -14,4 +14,5 @@ public class GameRoom
     public string? LastDrawPlayerId { get; set; }
     public string? WinnerId { get; set; }
     public bool HasDrawnThisTurn { get; set; } = false;
+    public int MaxPlayers { get; set; } = 6;
 }
