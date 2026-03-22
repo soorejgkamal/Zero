@@ -33,6 +33,7 @@
 
     private Card? DrawnCardPreview;
     private string? LastPreviewedCardId;
+    private const int DrawnCardPreviewDurationMs = 1500;
 
     private List<Card> SortedCards => CardSorter.SortHand(Cards);
 
@@ -45,7 +46,7 @@
             if (DrawnCardPreview != null)
             {
                 StateHasChanged();
-                await Task.Delay(1500);
+                await Task.Delay(DrawnCardPreviewDurationMs);
                 DrawnCardPreview = null;
                 StateHasChanged();
             }
