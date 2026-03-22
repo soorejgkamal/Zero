@@ -114,78 +114,56 @@ public class GameHub : Hub
         await BroadcastGameState(room, null);
     }
 
-    public async Task DrawCard()
+    public async Task DiscardAndDraw(string cardId)
     {
         if (!GetCurrentRoomAndPlayer(out var room, out var player)) return;
         if (room!.Phase != GamePhase.Playing) return;
-        
-        var currentPlayer = room.Players[room.CurrentPlayerIndex];
-        if (currentPlayer.Id != player!.Id) 
-        {
-            await Clients.Caller.SendAsync("Error", "Not your turn");
-            return;
-        }
-        if (room.HasDrawnCard)
-        {
-            await Clients.Caller.SendAsync("Error", "Already drawn this turn");
-            return;
-        }
-        
-        if (room.Deck.Count == 0)
-        {
-            room.Deck = room.DiscardPile.OrderBy(_ => Guid.NewGuid()).ToList();
-            room.DiscardPile.Clear();
-            if (room.Deck.Count == 0)
-            {
-                await Clients.Caller.SendAsync("Error", "No cards available");
-                return;
-            }
-        }
-        
-        var card = room.Deck[0];
-        room.Deck.RemoveAt(0);
-        currentPlayer.Hand.Add(card);
-        room.LastDrawPlayerId = currentPlayer.Id;
-        room.HasDrawnCard = true;
-        
-        await BroadcastGameState(room, null, card.Id);
-    }
 
-    public async Task DiscardCard(string cardId)
-    {
-        if (!GetCurrentRoomAndPlayer(out var room, out var player)) return;
-        if (room!.Phase != GamePhase.Playing) return;
-        
         var currentPlayer = room.Players[room.CurrentPlayerIndex];
         if (currentPlayer.Id != player!.Id)
         {
             await Clients.Caller.SendAsync("Error", "Not your turn");
             return;
         }
-        if (!room.HasDrawnCard)
-        {
-            await Clients.Caller.SendAsync("Error", "Must draw a card before discarding");
-            return;
-        }
-        
+
         var card = currentPlayer.Hand.FirstOrDefault(c => c.Id == cardId);
         if (card == null)
         {
             await Clients.Caller.SendAsync("Error", "Card not found in hand");
             return;
         }
-        
+
+        // If deck is empty, reshuffle discard pile before discarding to avoid drawing back the same card
+        if (room.Deck.Count == 0 && room.DiscardPile.Count > 0)
+        {
+            room.Deck = room.DiscardPile.OrderBy(_ => Guid.NewGuid()).ToList();
+            room.DiscardPile.Clear();
+        }
+
+        // Discard the selected card
         currentPlayer.Hand.Remove(card);
         room.DiscardPile.Add(card);
-        
+
+        // Win condition: player emptied their hand by discarding
         if (currentPlayer.Hand.Count == 0)
         {
             await EndRound(room, currentPlayer.Id);
             return;
         }
-        
+
+        // Draw a new card
+        string? newCardId = null;
+        if (room.Deck.Count > 0)
+        {
+            var newCard = room.Deck[0];
+            room.Deck.RemoveAt(0);
+            currentPlayer.Hand.Add(newCard);
+            room.LastDrawPlayerId = currentPlayer.Id;
+            newCardId = newCard.Id;
+        }
+
         AdvanceTurn(room);
-        await BroadcastGameState(room, null);
+        await BroadcastGameState(room, null, newCardId);
     }
 
     public async Task OpenSet(List<string> cardIds)
@@ -199,12 +177,7 @@ public class GameHub : Hub
             await Clients.Caller.SendAsync("Error", "Not your turn");
             return;
         }
-        if (!room.HasDrawnCard)
-        {
-            await Clients.Caller.SendAsync("Error", "Must draw a card before opening a set");
-            return;
-        }
-        
+
         var cards = cardIds
             .Select(id => currentPlayer.Hand.FirstOrDefault(c => c.Id == id))
             .Where(c => c != null)
@@ -242,7 +215,8 @@ public class GameHub : Hub
             await EndRound(room, currentPlayer.Id);
             return;
         }
-        
+
+        AdvanceTurn(room);
         await BroadcastGameState(room, null);
     }
 
@@ -255,11 +229,6 @@ public class GameHub : Hub
         if (currentPlayer.Id != player!.Id)
         {
             await Clients.Caller.SendAsync("Error", "Not your turn");
-            return;
-        }
-        if (!room.HasDrawnCard)
-        {
-            await Clients.Caller.SendAsync("Error", "Must draw a card before adding to a set");
             return;
         }
         if (!currentPlayer.HasOpenedSet)
@@ -303,28 +272,9 @@ public class GameHub : Hub
             await EndRound(room, currentPlayer.Id);
             return;
         }
-        
-        await BroadcastGameState(room, null);
-    }
 
-    public async Task EndTurn()
-    {
-        if (!GetCurrentRoomAndPlayer(out var room, out var player)) return;
-        if (room!.Phase != GamePhase.Playing) return;
-        
-        var currentPlayer = room.Players[room.CurrentPlayerIndex];
-        if (currentPlayer.Id != player!.Id)
-        {
-            await Clients.Caller.SendAsync("Error", "Not your turn");
-            return;
-        }
-        if (!room.HasDrawnCard)
-        {
-            await Clients.Caller.SendAsync("Error", "Must draw a card first");
-            return;
-        }
-        
-        await Clients.Caller.SendAsync("Error", "Must discard a card to end your turn");
+        AdvanceTurn(room);
+        await BroadcastGameState(room, null);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
