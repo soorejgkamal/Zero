@@ -12,9 +12,9 @@ Zero is a card game for 2-6 players where the goal is to be the last player rema
 - **Players**: 2 to 6 players per game room
 - **Starting Hand**: 10 cards per player
 - **Turn Structure**:
-  1. Draw 1 card from the deck
+  1. Discard 1 card face-down
   2. (Optional) Open a new sequence or add cards to existing sequences
-  3. Discard 1 card face-down
+  3. Draw 1 card from the deck
 - **Sequences**: Minimum 3 cards of the same suit in consecutive rank order
 - **Jokers**: Act as wildcards (worth 10 points)
 - **Round Ends**: When a player has 0 cards in hand
@@ -112,11 +112,11 @@ To test multiplayer functionality locally:
    - Host clicks "Start Game"
 
 2. **During Your Turn**:
-   - Click "Draw Card" to draw from the deck
+   - Select a card and click "Discard" to discard it
    - Select cards in your hand to form sequences (min 3 cards, same suit, consecutive)
    - Click "Open Set" to place a new sequence on the table
    - Or select a single card and use the "+" buttons on existing sequences to extend them
-   - Click "Discard" to discard a selected card and end your turn
+   - Click "Draw Card" to draw from the deck and end your turn
 
 3. **Card Selection**:
    - Click cards in your hand to select/deselect them
