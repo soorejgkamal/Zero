@@ -1,0 +1,28 @@
+@using Zero.Helpers
+
+<div class="hand-container">
+    <div class="hand-cards">
+        @foreach (var card in SortedCards)
+        {
+            <CardComponent 
+                card="@card" 
+                IsSelected="@SelectedCardIds.Contains(card.Id)"
+                IsNewlyDrawn="@(card.Id == NewlyDrawnCardId)"
+                OnClick="@(() => OnCardClick(card.Id))" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<Card> Cards { get; set; } = new();
+    [Parameter] public List<string> SelectedCardIds { get; set; } = new();
+    [Parameter] public string? NewlyDrawnCardId { get; set; }
+    [Parameter] public EventCallback<string> OnCardSelected { get; set; }
+
+    private List<Card> SortedCards => CardSorter.SortHand(Cards);
+
+    private async Task OnCardClick(string cardId)
+    {
+        await OnCardSelected.InvokeAsync(cardId);
+    }
+}

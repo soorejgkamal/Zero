@@ -1,0 +1,30 @@
+<div class="table-set">
+    <div class="table-set-header">
+        <span class="placed-by">@PlacedByName</span>
+    </div>
+    <div class="table-set-cards">
+        @if (AllowAddToLeft)
+        {
+            <button class="add-card-btn" @onclick="() => OnAddLeft.InvokeAsync()">+</button>
+        }
+        
+        @foreach (var card in Sequence.Cards)
+        {
+            <CardComponent card="@card" IsSelected="false" IsHighlighted="false" IsNewlyDrawn="false" />
+        }
+        
+        @if (AllowAddToRight)
+        {
+            <button class="add-card-btn" @onclick="() => OnAddRight.InvokeAsync()">+</button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public Sequence Sequence { get; set; } = null!;
+    [Parameter] public string PlacedByName { get; set; } = "";
+    [Parameter] public bool AllowAddToLeft { get; set; }
+    [Parameter] public bool AllowAddToRight { get; set; }
+    [Parameter] public EventCallback OnAddLeft { get; set; }
+    [Parameter] public EventCallback OnAddRight { get; set; }
+}
