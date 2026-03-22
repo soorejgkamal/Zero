@@ -90,16 +90,10 @@ public class GameService
         await _hubConnection.SendAsync("StartGame", roomId);
     }
 
-    public async Task DrawCardAsync()
+    public async Task DiscardAndDrawAsync(string cardId)
     {
         if (_hubConnection == null) return;
-        await _hubConnection.SendAsync("DrawCard");
-    }
-
-    public async Task DiscardCardAsync(string cardId)
-    {
-        if (_hubConnection == null) return;
-        await _hubConnection.SendAsync("DiscardCard", cardId);
+        await _hubConnection.SendAsync("DiscardAndDraw", cardId);
     }
 
     public async Task OpenSetAsync(List<string> cardIds)
@@ -112,12 +106,6 @@ public class GameService
     {
         if (_hubConnection == null) return;
         await _hubConnection.SendAsync("AddToSet", sequenceId, cardId, addToLeft);
-    }
-
-    public async Task EndTurnAsync()
-    {
-        if (_hubConnection == null) return;
-        await _hubConnection.SendAsync("EndTurn");
     }
 
     public async ValueTask DisposeAsync()

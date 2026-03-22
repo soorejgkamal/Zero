@@ -17,14 +17,7 @@
                         @if (IsMyTurn)
                         {
                             <strong>YOUR TURN</strong>
-                            @if (!CurrentState.HasDrawnCard)
-                            {
-                                <span class="turn-hint"> — Draw a card</span>
-                            }
-                            else
-                            {
-                                <span class="turn-hint"> — Play or Discard</span>
-                            }
+                            <span class="turn-hint"> — Choose an action</span>
                         }
                         else
                         {
@@ -56,8 +49,8 @@
                         var placedByName = CurrentState.Players.FirstOrDefault(p => p.Id == seq.PlacedByPlayerId)?.Name ?? "Unknown";
                         var myPlayer = CurrentState.Players.FirstOrDefault(p => p.Id == GameService.PlayerId);
                         var hasOpened = myPlayer?.HasOpenedSet ?? false;
-                        var canAddLeft = IsMyTurn && CurrentState.HasDrawnCard && hasOpened && SelectedCards.Count == 1 && CanAddCardToSequence(seq, true);
-                        var canAddRight = IsMyTurn && CurrentState.HasDrawnCard && hasOpened && SelectedCards.Count == 1 && CanAddCardToSequence(seq, false);
+                        var canAddLeft = IsMyTurn && hasOpened && SelectedCards.Count == 1 && CanAddCardToSequence(seq, true);
+                        var canAddRight = IsMyTurn && hasOpened && SelectedCards.Count == 1 && CanAddCardToSequence(seq, false);
                         
                         <TableSetComponent 
                             Sequence="@seq" 
@@ -79,20 +72,13 @@
             <div class="player-actions">
                 @if (CurrentState.Phase == GamePhase.Playing && IsMyTurn)
                 {
-                    @if (!CurrentState.HasDrawnCard)
+                    @if (SelectedCards.Count == 1)
                     {
-                        <button @onclick="DrawCard" class="btn btn-primary">Draw Card</button>
+                        <button @onclick="DiscardAndDraw" class="btn btn-primary">Discard &amp; Draw</button>
                     }
-                    else
+                    @if (SelectedCards.Count >= 3)
                     {
-                        @if (SelectedCards.Count >= 3)
-                        {
-                            <button @onclick="OpenSet" class="btn btn-success">Open Set (@SelectedCards.Count cards)</button>
-                        }
-                        @if (SelectedCards.Count == 1)
-                        {
-                            <button @onclick="DiscardCard" class="btn btn-warning">Discard</button>
-                        }
+                        <button @onclick="OpenSet" class="btn btn-success">Open Set (@SelectedCards.Count cards)</button>
                     }
                     <button @onclick="ClearSelection" class="btn btn-secondary">Clear Selection</button>
                 }
@@ -192,18 +178,12 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private async Task DrawCard()
-    {
-        ErrorMessage = null;
-        await GameService.DrawCardAsync();
-    }
-
-    private async Task DiscardCard()
+    private async Task DiscardAndDraw()
     {
         if (SelectedCards.Count != 1) return;
-        
+
         ErrorMessage = null;
-        await GameService.DiscardCardAsync(SelectedCards[0]);
+        await GameService.DiscardAndDrawAsync(SelectedCards[0]);
         SelectedCards.Clear();
     }
 
