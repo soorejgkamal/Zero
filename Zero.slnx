@@ -1,5 +1,3 @@
 <Solution>
-  <Project Path="Zero.Client/Zero.Client.csproj" />
-  <Project Path="Zero.Server/Zero.Server.csproj" />
-  <Project Path="Zero.Shared/Zero.Shared.csproj" />
+  <Project Path="Zero.csproj" />
 </Solution>

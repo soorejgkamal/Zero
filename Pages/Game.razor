@@ -1,0 +1,287 @@
+@page "/game"
+
+<div class="game-container">
+    @if (CurrentState == null)
+    {
+        <div class="loading">Loading game...</div>
+    }
+    else
+    {
+        <div class="game-header">
+            <div class="game-info">
+                <span>Room: @CurrentState.RoomId</span>
+                <span>Deck: @CurrentState.DeckCount cards</span>
+                @if (CurrentState.Phase == GamePhase.Playing)
+                {
+                    <span class="turn-indicator">
+                        @if (IsMyTurn)
+                        {
+                            <strong>YOUR TURN</strong>
+                        }
+                        else
+                        {
+                            <text>@GetCurrentPlayerName()'s turn</text>
+                        }
+                    </span>
+                }
+            </div>
+        </div>
+
+        <div class="opponents-area">
+            @foreach (var player in CurrentState.Players.Where(p => p.Id != GameService.PlayerId))
+            {
+                <div class="opponent @(player.Id == CurrentState.CurrentPlayerId ? "current-turn" : "") @(player.IsEliminated ? "eliminated" : "")">
+                    <div class="opponent-name">@player.Name @(!player.IsConnected ? " (DC)" : "")</div>
+                    <div class="opponent-cards">@player.CardCount cards</div>
+                    <div class="opponent-score">Score: @player.Score</div>
+                </div>
+            }
+        </div>
+
+        <div class="table-area">
+            <h3>Table Sets</h3>
+            <div class="table-sets">
+                @if (CurrentState.TableSets.Any())
+                {
+                    @foreach (var seq in CurrentState.TableSets)
+                    {
+                        var placedByName = CurrentState.Players.FirstOrDefault(p => p.Id == seq.PlacedByPlayerId)?.Name ?? "Unknown";
+                        var canAddLeft = IsMyTurn && SelectedCards.Count == 1 && CanAddCardToSequence(seq, true);
+                        var canAddRight = IsMyTurn && SelectedCards.Count == 1 && CanAddCardToSequence(seq, false);
+                        
+                        <TableSetComponent 
+                            Sequence="@seq" 
+                            PlacedByName="@placedByName"
+                            AllowAddToLeft="@canAddLeft"
+                            AllowAddToRight="@canAddRight"
+                            OnAddLeft="@(() => AddToSequence(seq.Id, true))"
+                            OnAddRight="@(() => AddToSequence(seq.Id, false))" />
+                    }
+                }
+                else
+                {
+                    <p class="no-sets">No sets on table yet</p>
+                }
+            </div>
+        </div>
+
+        <div class="player-area">
+            <div class="player-actions">
+                @if (CurrentState.Phase == GamePhase.Playing && IsMyTurn)
+                {
+                    @if (!CurrentState.HasDrawnThisTurn)
+                    {
+                        <button @onclick="DrawCard" class="btn btn-primary">Draw Card</button>
+                    }
+                    else
+                    {
+                        @if (SelectedCards.Count >= 3)
+                        {
+                            <button @onclick="OpenSet" class="btn btn-success">Open Set (@SelectedCards.Count cards)</button>
+                        }
+                        @if (SelectedCards.Count == 1)
+                        {
+                            <button @onclick="DiscardCard" class="btn btn-warning">Discard</button>
+                        }
+                        <button @onclick="ClearSelection" class="btn btn-secondary">Clear Selection</button>
+                    }
+                }
+                
+                @if (CurrentState.Phase == GamePhase.RoundEnd || CurrentState.Phase == GamePhase.GameOver)
+                {
+                    <div class="round-end">
+                        <h2>Round Ended!</h2>
+                        <p>Winner: @GetPlayerName(CurrentState.WinnerId)</p>
+                        
+                        <ScoreBoardComponent Players="@CurrentState.Players" CurrentPlayerId="@CurrentState.CurrentPlayerId" />
+                        
+                        @if (CurrentState.Phase == GamePhase.GameOver)
+                        {
+                            <h3>Game Over!</h3>
+                            <button @onclick="BackToLobby" class="btn btn-primary">Back to Lobby</button>
+                        }
+                        else
+                        {
+                            <button @onclick="StartNewRound" class="btn btn-primary">Start New Round</button>
+                        }
+                    </div>
+                }
+            </div>
+
+            <HandComponent 
+                Cards="@MyHand" 
+                SelectedCardIds="@SelectedCards"
+                NewlyDrawnCardId="@CurrentState.NewlyDrawnCardId"
+                OnCardSelected="@HandleCardSelected" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="error-message">@ErrorMessage</div>
+        }
+    }
+</div>
+
+@code {
+    [Inject] private GameService GameService { get; set; } = null!;
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
+
+    private GameStateDto? CurrentState;
+    private List<string> SelectedCards = new();
+    private string? ErrorMessage;
+
+    private bool IsMyTurn => CurrentState?.CurrentPlayerId == GameService.PlayerId;
+    private List<Card> MyHand => CurrentState?.Players.FirstOrDefault(p => p.Id == GameService.PlayerId)?.Hand ?? new List<Card>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!GameService.IsConnected)
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+
+        GameService.OnGameStateUpdated += HandleGameStateUpdated;
+        GameService.OnError += HandleError;
+        GameService.OnRoundEnded += HandleRoundEnded;
+    }
+
+    private void HandleGameStateUpdated(GameStateDto state)
+    {
+        CurrentState = state;
+        
+        if (state.Phase == GamePhase.Lobby)
+        {
+            Navigation.NavigateTo("/");
+        }
+        
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleError(string message)
+    {
+        ErrorMessage = message;
+        InvokeAsync(StateHasChanged);
+        
+        Task.Run(async () =>
+        {
+            await Task.Delay(3000);
+            ErrorMessage = null;
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private void HandleRoundEnded(string winnerId)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task DrawCard()
+    {
+        ErrorMessage = null;
+        await GameService.DrawCardAsync();
+    }
+
+    private async Task DiscardCard()
+    {
+        if (SelectedCards.Count != 1) return;
+        
+        ErrorMessage = null;
+        await GameService.DiscardCardAsync(SelectedCards[0]);
+        SelectedCards.Clear();
+    }
+
+    private async Task OpenSet()
+    {
+        if (SelectedCards.Count < 3) return;
+        
+        ErrorMessage = null;
+        await GameService.OpenSetAsync(SelectedCards);
+        SelectedCards.Clear();
+    }
+
+    private async Task AddToSequence(string sequenceId, bool addToLeft)
+    {
+        if (SelectedCards.Count != 1) return;
+        
+        ErrorMessage = null;
+        await GameService.AddToSetAsync(sequenceId, SelectedCards[0], addToLeft);
+        SelectedCards.Clear();
+    }
+
+    private void HandleCardSelected(string cardId)
+    {
+        if (SelectedCards.Contains(cardId))
+        {
+            SelectedCards.Remove(cardId);
+        }
+        else
+        {
+            SelectedCards.Add(cardId);
+        }
+        StateHasChanged();
+    }
+
+    private void ClearSelection()
+    {
+        SelectedCards.Clear();
+    }
+
+    private bool CanAddCardToSequence(Sequence seq, bool toLeft)
+    {
+        if (SelectedCards.Count != 1) return false;
+        var card = MyHand.FirstOrDefault(c => c.Id == SelectedCards[0]);
+        if (card == null) return false;
+        
+        if (card.IsJoker) return true;
+        
+        var targetCard = toLeft ? seq.Cards.FirstOrDefault(c => !c.IsJoker) : seq.Cards.LastOrDefault(c => !c.IsJoker);
+        if (targetCard == null) return false;
+        
+        if (card.Suit != targetCard.Suit) return false;
+        
+        if (toLeft)
+        {
+            int jokersAtStart = seq.Cards.TakeWhile(c => c.IsJoker).Count();
+            int effectiveRank = (int)targetCard.Rank! - jokersAtStart;
+            return (int)card.Rank! == effectiveRank - 1;
+        }
+        else
+        {
+            int jokersAtEnd = seq.Cards.AsEnumerable().Reverse().TakeWhile(c => c.IsJoker).Count();
+            int effectiveRank = (int)targetCard.Rank! + jokersAtEnd;
+            return (int)card.Rank! == effectiveRank + 1 && (int)card.Rank! <= (int)Rank.Ace;
+        }
+    }
+
+    private string GetCurrentPlayerName()
+    {
+        return CurrentState?.Players.FirstOrDefault(p => p.Id == CurrentState.CurrentPlayerId)?.Name ?? "";
+    }
+
+    private string GetPlayerName(string? playerId)
+    {
+        if (string.IsNullOrEmpty(playerId)) return "";
+        return CurrentState?.Players.FirstOrDefault(p => p.Id == playerId)?.Name ?? "";
+    }
+
+    private async Task StartNewRound()
+    {
+        if (CurrentState?.RoomId != null)
+        {
+            await GameService.StartGameAsync(CurrentState.RoomId);
+        }
+    }
+
+    private void BackToLobby()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    public void Dispose()
+    {
+        GameService.OnGameStateUpdated -= HandleGameStateUpdated;
+        GameService.OnError -= HandleError;
+        GameService.OnRoundEnded -= HandleRoundEnded;
+    }
+}
