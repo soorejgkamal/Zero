@@ -68,6 +68,27 @@
             </div>
         </div>
 
+        @if (CurrentState.Phase == GamePhase.RoundEnd || CurrentState.Phase == GamePhase.GameOver)
+        {
+            <div class="round-end-overlay">
+                <div class="round-end">
+                    <h2>@(CurrentState.Phase == GamePhase.GameOver ? "🏆 Game Over!" : "🎉 Round Ended!")</h2>
+                    <p>Winner: @GetPlayerName(CurrentState.WinnerId)</p>
+                    
+                    <ScoreBoardComponent Players="@CurrentState.Players" CurrentPlayerId="@CurrentState.CurrentPlayerId" />
+                    
+                    @if (CurrentState.Phase == GamePhase.GameOver)
+                    {
+                        <button @onclick="BackToLobby" class="btn btn-primary">Back to Lobby</button>
+                    }
+                    else
+                    {
+                        <button @onclick="StartNewRound" class="btn btn-primary">Start New Round</button>
+                    }
+                </div>
+            </div>
+        }
+
         <div class="player-area">
             <div class="player-actions">
                 @if (CurrentState.Phase == GamePhase.Playing && IsMyTurn)
@@ -81,26 +102,6 @@
                         <button @onclick="OpenSet" class="btn btn-success">Open Set (@SelectedCards.Count cards)</button>
                     }
                     <button @onclick="ClearSelection" class="btn btn-secondary">Clear Selection</button>
-                }
-                
-                @if (CurrentState.Phase == GamePhase.RoundEnd || CurrentState.Phase == GamePhase.GameOver)
-                {
-                    <div class="round-end">
-                        <h2>Round Ended!</h2>
-                        <p>Winner: @GetPlayerName(CurrentState.WinnerId)</p>
-                        
-                        <ScoreBoardComponent Players="@CurrentState.Players" CurrentPlayerId="@CurrentState.CurrentPlayerId" />
-                        
-                        @if (CurrentState.Phase == GamePhase.GameOver)
-                        {
-                            <h3>Game Over!</h3>
-                            <button @onclick="BackToLobby" class="btn btn-primary">Back to Lobby</button>
-                        }
-                        else
-                        {
-                            <button @onclick="StartNewRound" class="btn btn-primary">Start New Round</button>
-                        }
-                    </div>
                 }
             </div>
 
