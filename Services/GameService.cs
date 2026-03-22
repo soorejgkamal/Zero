@@ -20,6 +20,7 @@ public class GameService
     public string? PlayerId => _playerId;
     public string? RoomId => _roomId;
     public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
+    public GameStateDto? CurrentGameState { get; private set; }
 
     public async Task InitializeAsync(string hubUrl)
     {
@@ -30,6 +31,7 @@ public class GameService
 
         _hubConnection.On<GameStateDto>("GameStateUpdated", (state) =>
         {
+            CurrentGameState = state;
             OnGameStateUpdated?.Invoke(state);
         });
 
@@ -70,10 +72,10 @@ public class GameService
         await _hubConnection.StartAsync();
     }
 
-    public async Task CreateRoomAsync(string playerName)
+    public async Task CreateRoomAsync(string playerName, int maxPlayers = 6)
     {
         if (_hubConnection == null) return;
-        await _hubConnection.SendAsync("CreateRoom", playerName);
+        await _hubConnection.SendAsync("CreateRoom", playerName, maxPlayers);
     }
 
     public async Task JoinRoomAsync(string roomId, string playerName)

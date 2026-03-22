@@ -15,6 +15,7 @@ public class Card
     public string DisplayName => IsJoker ? "🃏" : $"{RankSymbol}{SuitSymbol}";
     
     public string RankSymbol => Rank switch {
+        null => "🃏",
         Models.Rank.Ace => "A",
         Models.Rank.Jack => "J",
         Models.Rank.Queen => "Q",
