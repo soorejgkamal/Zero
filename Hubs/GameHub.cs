@@ -213,7 +213,7 @@ public class GameHub : Hub
         await BroadcastGameState(room, null);
     }
 
-    public async Task AddToSet(string sequenceId, string cardId, bool addToLeft)
+    public async Task AddToSet(string sequenceId, List<string> cardIds, bool addToLeft)
     {
         if (!GetCurrentRoomAndPlayer(out var room, out var player)) return;
         if (room!.Phase != GamePhase.Playing) return;
@@ -229,6 +229,12 @@ public class GameHub : Hub
             await Clients.Caller.SendAsync("Error", "Must open at least one set before adding to table");
             return;
         }
+
+        if (cardIds == null || cardIds.Count == 0)
+        {
+            await Clients.Caller.SendAsync("Error", "No cards selected");
+            return;
+        }
         
         var sequence = room.TableSets.FirstOrDefault(s => s.Id == sequenceId);
         if (sequence == null)
@@ -237,28 +243,37 @@ public class GameHub : Hub
             return;
         }
         
-        var card = currentPlayer.Hand.FirstOrDefault(c => c.Id == cardId);
-        if (card == null)
+        var cards = cardIds
+            .Select(id => currentPlayer.Hand.FirstOrDefault(c => c.Id == id))
+            .Where(c => c != null)
+            .Cast<Card>()
+            .ToList();
+
+        if (cards.Count != cardIds.Count)
         {
-            await Clients.Caller.SendAsync("Error", "Card not found in hand");
+            await Clients.Caller.SendAsync("Error", "Some cards not found in hand");
             return;
         }
         
         bool canAdd = addToLeft 
-            ? GameEngine.CanAddToLeft(sequence, card) 
-            : GameEngine.CanAddToRight(sequence, card);
+            ? GameEngine.CanAddMultipleToLeft(sequence, cards) 
+            : GameEngine.CanAddMultipleToRight(sequence, cards);
         
         if (!canAdd)
         {
-            await Clients.Caller.SendAsync("Error", "Cannot add card to that position");
+            await Clients.Caller.SendAsync("Error", "Cannot add cards to that position");
             return;
         }
+
+        var sortedCards = GameEngine.SortSequenceCards(cards);
         
-        currentPlayer.Hand.Remove(card);
+        foreach (var card in cards)
+            currentPlayer.Hand.Remove(card);
+
         if (addToLeft)
-            sequence.Cards.Insert(0, card);
+            sequence.Cards.InsertRange(0, sortedCards);
         else
-            sequence.Cards.Add(card);
+            sequence.Cards.AddRange(sortedCards);
         
         if (currentPlayer.Hand.Count == 0)
         {

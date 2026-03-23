@@ -102,10 +102,10 @@ public class GameService
         await _hubConnection.SendAsync("OpenSet", cardIds);
     }
 
-    public async Task AddToSetAsync(string sequenceId, string cardId, bool addToLeft)
+    public async Task AddToSetAsync(string sequenceId, List<string> cardIds, bool addToLeft)
     {
         if (_hubConnection == null) return;
-        await _hubConnection.SendAsync("AddToSet", sequenceId, cardId, addToLeft);
+        await _hubConnection.SendAsync("AddToSet", sequenceId, cardIds, addToLeft);
     }
 
     public async ValueTask DisposeAsync()

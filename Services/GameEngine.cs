@@ -124,6 +124,56 @@ public static class GameEngine
         return gaps <= jokerCount && (nonJokers.Count + jokerCount) == sortedCards.Count;
     }
     
+    public static bool CanAddMultipleToLeft(Sequence seq, List<Card> cards)
+    {
+        if (cards.Count == 0) return false;
+        if (cards.Count == 1) return CanAddToLeft(seq, cards[0]);
+
+        var nonJokersNew = cards.Where(c => !c.IsJoker).ToList();
+        var seqSuit = seq.Cards.FirstOrDefault(c => !c.IsJoker)?.Suit;
+
+        if (nonJokersNew.Count > 0)
+        {
+            if (seqSuit == null) return false;
+            if (nonJokersNew.Any(c => c.Suit != seqSuit)) return false;
+        }
+
+        int jokersAtStartOfSeq = seq.Cards.TakeWhile(c => c.IsJoker).Count();
+        var firstNonJokerOfSeq = seq.Cards.FirstOrDefault(c => !c.IsJoker);
+        if (firstNonJokerOfSeq == null) return false;
+        int effectiveLeftRank = (int)firstNonJokerOfSeq.Rank! - jokersAtStartOfSeq;
+
+        if (nonJokersNew.Any(c => (int)c.Rank! >= effectiveLeftRank)) return false;
+
+        var combined = cards.Concat(seq.Cards).ToList();
+        return IsValidSequence(combined);
+    }
+
+    public static bool CanAddMultipleToRight(Sequence seq, List<Card> cards)
+    {
+        if (cards.Count == 0) return false;
+        if (cards.Count == 1) return CanAddToRight(seq, cards[0]);
+
+        var nonJokersNew = cards.Where(c => !c.IsJoker).ToList();
+        var seqSuit = seq.Cards.FirstOrDefault(c => !c.IsJoker)?.Suit;
+
+        if (nonJokersNew.Count > 0)
+        {
+            if (seqSuit == null) return false;
+            if (nonJokersNew.Any(c => c.Suit != seqSuit)) return false;
+        }
+
+        int jokersAtEndOfSeq = seq.Cards.AsEnumerable().Reverse().TakeWhile(c => c.IsJoker).Count();
+        var lastNonJokerOfSeq = seq.Cards.LastOrDefault(c => !c.IsJoker);
+        if (lastNonJokerOfSeq == null) return false;
+        int effectiveRightRank = (int)lastNonJokerOfSeq.Rank! + jokersAtEndOfSeq;
+
+        if (nonJokersNew.Any(c => (int)c.Rank! <= effectiveRightRank)) return false;
+
+        var combined = seq.Cards.Concat(cards).ToList();
+        return IsValidSequence(combined);
+    }
+
     public static bool CanAddToLeft(Sequence seq, Card card)
     {
         if (card.IsJoker) return true;

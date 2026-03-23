@@ -69,8 +69,8 @@
                         var placedByName = CurrentState.Players.FirstOrDefault(p => p.Id == seq.PlacedByPlayerId)?.Name ?? "Unknown";
                         var myPlayer = CurrentState.Players.FirstOrDefault(p => p.Id == GameService.PlayerId);
                         var hasOpened = myPlayer?.HasOpenedSet ?? false;
-                        var canAddLeft = IsMyTurn && hasOpened && SelectedCards.Count == 1 && CanAddCardToSequence(seq, true);
-                        var canAddRight = IsMyTurn && hasOpened && SelectedCards.Count == 1 && CanAddCardToSequence(seq, false);
+                        var canAddLeft = IsMyTurn && hasOpened && SelectedCards.Count >= 1 && CanAddCardsToSequence(seq, true);
+                        var canAddRight = IsMyTurn && hasOpened && SelectedCards.Count >= 1 && CanAddCardsToSequence(seq, false);
                         
                         <TableSetComponent 
                             Sequence="@seq" 
@@ -220,10 +220,10 @@
 
     private async Task AddToSequence(string sequenceId, bool addToLeft)
     {
-        if (SelectedCards.Count != 1) return;
+        if (SelectedCards.Count == 0) return;
         
         ErrorMessage = null;
-        await GameService.AddToSetAsync(sequenceId, SelectedCards[0], addToLeft);
+        await GameService.AddToSetAsync(sequenceId, SelectedCards.ToList(), addToLeft);
         SelectedCards.Clear();
     }
 
@@ -250,31 +250,19 @@
         SelectedCards.Clear();
     }
 
-    private bool CanAddCardToSequence(Sequence seq, bool toLeft)
+    private bool CanAddCardsToSequence(Sequence seq, bool toLeft)
     {
-        if (SelectedCards.Count != 1) return false;
-        var card = MyHand.FirstOrDefault(c => c.Id == SelectedCards[0]);
-        if (card == null) return false;
-        
-        if (card.IsJoker) return true;
-        
-        var targetCard = toLeft ? seq.Cards.FirstOrDefault(c => !c.IsJoker) : seq.Cards.LastOrDefault(c => !c.IsJoker);
-        if (targetCard == null) return false;
-        
-        if (card.Suit != targetCard.Suit) return false;
-        
-        if (toLeft)
-        {
-            int jokersAtStart = seq.Cards.TakeWhile(c => c.IsJoker).Count();
-            int effectiveRank = (int)targetCard.Rank! - jokersAtStart;
-            return (int)card.Rank! == effectiveRank - 1;
-        }
-        else
-        {
-            int jokersAtEnd = seq.Cards.AsEnumerable().Reverse().TakeWhile(c => c.IsJoker).Count();
-            int effectiveRank = (int)targetCard.Rank! + jokersAtEnd;
-            return (int)card.Rank! == effectiveRank + 1 && (int)card.Rank! <= (int)Rank.Ace;
-        }
+        if (SelectedCards.Count == 0) return false;
+        var cards = SelectedCards
+            .Select(id => MyHand.FirstOrDefault(c => c.Id == id))
+            .Where(c => c != null)
+            .Cast<Card>()
+            .ToList();
+        if (cards.Count != SelectedCards.Count) return false;
+
+        return toLeft
+            ? GameEngine.CanAddMultipleToLeft(seq, cards)
+            : GameEngine.CanAddMultipleToRight(seq, cards);
     }
 
     private string GetCurrentPlayerName()
