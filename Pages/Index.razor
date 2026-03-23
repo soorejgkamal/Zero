@@ -6,7 +6,8 @@
     @if (string.IsNullOrEmpty(RoomId))
     {
         <div class="lobby-form">
-            <input type="text" @bind="PlayerName" placeholder="Enter your name" class="lobby-input" />
+            <input type="text" @bind="PlayerName" placeholder="Enter your name" class="lobby-input"
+                   autofocus title="Your display name in the game (max 30 characters)" maxlength="30" />
             
             <div class="lobby-actions">
                 <div class="player-count-selector">
@@ -28,7 +29,8 @@
                 <div class="action-divider"><span>OR</span></div>
 
                 <div class="join-room">
-                    <input type="text" @bind="JoinRoomCode" placeholder="Room Code" class="lobby-input room-code-input" maxlength="6" />
+                    <input type="text" @bind="JoinRoomCode" placeholder="Room Code" class="lobby-input room-code-input"
+                           maxlength="6" title="Enter the 6-character room code shared by the host" />
                     <button @onclick="JoinRoom" class="btn btn-secondary" disabled="@(string.IsNullOrWhiteSpace(PlayerName) || string.IsNullOrWhiteSpace(JoinRoomCode))">
                         Join Room
                     </button>

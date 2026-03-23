@@ -17,10 +17,25 @@ body {
 
 .loading {
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     height: 100vh;
     font-size: 1.5rem;
+    gap: 1rem;
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 5px solid rgba(255,255,255,0.3);
+    border-top-color: #FFD700;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 .lobby-container {
@@ -30,6 +45,8 @@ body {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 15px;
     backdrop-filter: blur(10px);
+    overflow-y: auto;
+    max-height: calc(100vh - 40px);
 }
 
 .lobby-container h1 {
@@ -52,6 +69,13 @@ body {
     font-size: 1rem;
     background: rgba(255, 255, 255, 0.9);
     color: #333;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.lobby-input:focus {
+    outline: 2px solid #FFD700;
+    outline-offset: 2px;
 }
 
 .lobby-actions {
@@ -110,11 +134,12 @@ body {
 .player-count-buttons {
     display: flex;
     gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .player-count-btn {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border: 2px solid rgba(255, 255, 255, 0.3);
     background: rgba(255, 255, 255, 0.1);
     color: white;
@@ -123,6 +148,7 @@ body {
     font-size: 1rem;
     font-weight: bold;
     transition: all 0.2s;
+    touch-action: manipulation;
 }
 
 .player-count-btn:hover {
@@ -162,11 +188,17 @@ body {
     font-weight: bold;
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
+    touch-action: manipulation;
+    min-height: 44px;
 }
 
 .btn:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.btn:active:not(:disabled) {
+    transform: translateY(0);
 }
 
 .btn:disabled {
@@ -234,19 +266,23 @@ body {
     flex-direction: column;
     height: 100vh;
     overflow: hidden;
+    position: relative;
 }
 
 .game-header {
-    padding: 1rem;
+    padding: 0.6rem 1rem;
     background: rgba(0, 0, 0, 0.3);
     border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
 }
 
 .game-info {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 0.5rem;
+    font-size: 0.9rem;
 }
 
 .turn-indicator {
@@ -260,21 +296,106 @@ body {
     opacity: 0.8;
 }
 
+.scoreboard-btn {
+    background: rgba(255, 215, 0, 0.2);
+    border: 1px solid rgba(255, 215, 0, 0.5);
+    color: #FFD700;
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: bold;
+    transition: all 0.2s;
+    touch-action: manipulation;
+    min-height: 36px;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.scoreboard-btn:hover {
+    background: rgba(255, 215, 0, 0.35);
+    border-color: #FFD700;
+}
+
+.scoreboard-popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.scoreboard-popup {
+    background: rgba(30, 60, 114, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 14px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 420px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.scoreboard-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.scoreboard-popup-header h3 {
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+.close-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+    flex-shrink: 0;
+}
+
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.scoreboard-note {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    margin-top: 0.75rem;
+    text-align: center;
+}
+
 .opponents-area {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
     padding: 0.5rem;
     background: rgba(0, 0, 0, 0.2);
-    min-height: 60px;
+    flex-shrink: 0;
+    overflow-x: auto;
 }
 
 .opponent {
-    padding: 0.5rem;
+    padding: 0.4rem 0.6rem;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    min-width: 150px;
-    font-size: 0.9rem;
+    min-width: 120px;
+    font-size: 0.85rem;
+    flex-shrink: 0;
 }
 
 .opponent.current-turn {
@@ -289,19 +410,25 @@ body {
 
 .opponent-name {
     font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
 }
 
 .table-area {
     flex: 1;
     overflow-y: auto;
-    padding: 1rem;
+    overflow-x: hidden;
+    padding: 0.75rem;
     background: rgba(0, 0, 0, 0.1);
+    -webkit-overflow-scrolling: touch;
 }
 
 .table-sets {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 0.75rem;
 }
 
 .no-sets {
@@ -314,7 +441,9 @@ body {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 10px;
     padding: 0.75rem;
-    min-width: 200px;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .table-set-header {
@@ -327,11 +456,12 @@ body {
     display: flex;
     align-items: center;
     gap: 0.25rem;
+    flex-wrap: nowrap;
 }
 
 .add-card-btn {
-    width: 40px;
-    height: 60px;
+    width: 44px;
+    height: 64px;
     border: 2px dashed rgba(255, 255, 255, 0.5);
     background: rgba(0, 255, 0, 0.2);
     border-radius: 5px;
@@ -339,6 +469,8 @@ body {
     font-size: 1.5rem;
     color: white;
     transition: all 0.2s;
+    touch-action: manipulation;
+    flex-shrink: 0;
 }
 
 .add-card-btn:hover {
@@ -348,8 +480,9 @@ body {
 
 .player-area {
     background: rgba(0, 0, 0, 0.3);
-    padding: 1rem;
+    padding: 0.75rem;
     border-top: 2px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
 }
 
 .player-actions {
@@ -363,12 +496,29 @@ body {
     overflow-x: auto;
     overflow-y: hidden;
     padding: 0.5rem 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.3) transparent;
+}
+
+.hand-container::-webkit-scrollbar {
+    height: 4px;
+}
+
+.hand-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.hand-container::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+    border-radius: 2px;
 }
 
 .hand-cards {
     display: flex;
     gap: 0.5rem;
     min-height: 100px;
+    padding-bottom: 4px;
 }
 
 .card {
@@ -381,14 +531,22 @@ body {
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: transform 0.15s, box-shadow 0.15s;
     flex-shrink: 0;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .card:hover {
     transform: translateY(-10px);
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.card:active {
+    transform: translateY(-5px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
 }
 
 .card-content {
@@ -475,9 +633,18 @@ body {
 .scoreboard-player {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     padding: 0.5rem;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 5px;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.scoreboard-player .player-score {
+    font-weight: bold;
+    min-width: 70px;
+    text-align: right;
 }
 
 .scoreboard-player.current-turn {
@@ -491,6 +658,7 @@ body {
 .eliminated-badge {
     color: #ff4444;
     font-weight: bold;
+    font-size: 0.8rem;
 }
 
 .round-end-overlay {
@@ -507,6 +675,7 @@ body {
     padding: 2rem 1rem;
     overflow-y: auto;
     z-index: 100;
+    -webkit-overflow-scrolling: touch;
 }
 
 .round-end {
@@ -532,6 +701,7 @@ body {
     position: fixed;
     top: 20px;
     right: 20px;
+    left: 20px;
     background: #f44336;
     color: white;
     padding: 1rem 1.5rem;
@@ -539,23 +709,142 @@ body {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     z-index: 1000;
     animation: slideIn 0.3s ease-out;
+    text-align: center;
 }
 
 @keyframes slideIn {
     from {
-        transform: translateX(400px);
+        transform: translateY(-60px);
         opacity: 0;
     }
     to {
-        transform: translateX(0);
+        transform: translateY(0);
         opacity: 1;
     }
 }
 
-@media (max-width: 768px) {
+/* ========================
+   Mobile Responsive Styles
+   ======================== */
+
+@media (max-width: 480px) {
+    .lobby-container {
+        margin: 0;
+        padding: 1rem;
+        border-radius: 0;
+        min-height: 100vh;
+        max-height: 100vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .lobby-container h1 {
+        font-size: 1.6rem;
+        margin-bottom: 1rem;
+    }
+
+    .game-header {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .game-info {
+        font-size: 0.78rem;
+        gap: 0.35rem;
+    }
+
+    .scoreboard-btn {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.5rem;
+        min-height: 32px;
+    }
+
+    .opponents-area {
+        padding: 0.4rem;
+        gap: 0.35rem;
+        min-height: 60px;
+    }
+
+    .opponent {
+        padding: 0.3rem 0.5rem;
+        min-width: 100px;
+        font-size: 0.78rem;
+    }
+
+    .opponent-name {
+        max-width: 90px;
+    }
+
+    .table-area {
+        padding: 0.5rem;
+    }
+
+    .table-sets {
+        gap: 0.5rem;
+    }
+
+    .table-set {
+        padding: 0.5rem;
+    }
+
+    .player-area {
+        padding: 0.5rem;
+    }
+
+    .player-actions {
+        gap: 0.35rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .player-actions .btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.82rem;
+        min-height: 40px;
+    }
+
+    .card {
+        width: 52px;
+        height: 76px;
+        border-radius: 6px;
+    }
+
+    .card-rank {
+        font-size: 1rem;
+    }
+
+    .card-suit {
+        font-size: 1.3rem;
+    }
+
+    .card-joker {
+        font-size: 2rem;
+    }
+
+    .add-card-btn {
+        width: 36px;
+        height: 52px;
+        font-size: 1.2rem;
+    }
+
+    .hand-cards {
+        min-height: 80px;
+    }
+
+    .round-end h2 {
+        font-size: 1.5rem;
+    }
+
+    .scoreboard-popup {
+        padding: 1rem;
+        max-height: 90vh;
+    }
+}
+
+@media (max-width: 768px) and (min-width: 481px) {
     .lobby-container {
         margin: 20px;
-        padding: 1rem;
+        padding: 1.25rem;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
     }
 
     .lobby-container h1 {
@@ -564,7 +853,7 @@ body {
 
     .card {
         width: 60px;
-        height: 85px;
+        height: 88px;
     }
 
     .card-rank {
@@ -572,7 +861,7 @@ body {
     }
 
     .card-suit {
-        font-size: 1.5rem;
+        font-size: 1.6rem;
     }
 
     .card-joker {
@@ -580,7 +869,12 @@ body {
     }
 
     .game-info {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
+    }
+
+    .add-card-btn {
+        width: 40px;
+        height: 56px;
     }
 }
 
