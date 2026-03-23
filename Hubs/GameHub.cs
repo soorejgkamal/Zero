@@ -144,13 +144,6 @@ public class GameHub : Hub
         currentPlayer.Hand.Remove(card);
         room.DiscardPile.Add(card);
 
-        // Win condition: player emptied their hand by discarding
-        if (currentPlayer.Hand.Count == 0)
-        {
-            await EndRound(room, currentPlayer.Id);
-            return;
-        }
-
         // Draw a new card
         string? newCardId = null;
         if (room.Deck.Count > 0)
