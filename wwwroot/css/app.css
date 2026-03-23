@@ -68,6 +68,12 @@ body {
     filter: drop-shadow(0 2px 8px rgba(255, 215, 0, 0.35));
 }
 
+.lobby-hero-icon {
+    -webkit-text-fill-color: initial;
+    background: none;
+    display: inline-block;
+}
+
 .lobby-tagline {
     font-size: 1rem;
     color: rgba(255, 255, 255, 0.65);
@@ -470,10 +476,11 @@ body {
 .table-area {
     flex: 1;
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: auto;
     padding: 0.75rem;
     background: rgba(0, 0, 0, 0.1);
     -webkit-overflow-scrolling: touch;
+    min-height: 0;
 }
 
 .table-sets {
@@ -545,7 +552,7 @@ body {
 }
 
 .hand-container {
-    overflow-x: auto;
+    overflow-x: hidden;
     overflow-y: visible;
     padding: 0.75rem 0 0.5rem;
     -webkit-overflow-scrolling: touch;
@@ -568,6 +575,7 @@ body {
 
 .hand-cards {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     min-height: 100px;
     padding-bottom: 4px;
@@ -926,6 +934,27 @@ body {
     .add-card-btn {
         width: 40px;
         height: 56px;
+    }
+}
+
+@media (max-width: 768px) and (orientation: landscape) {
+    .table-area {
+        max-height: 40vh;
+    }
+
+    .player-area {
+        max-height: 45vh;
+        overflow-y: auto;
+    }
+
+    .hand-container {
+        max-height: 38vh;
+        overflow-y: auto;
+    }
+
+    .opponents-area {
+        max-height: 60px;
+        overflow-y: auto;
     }
 }
 
