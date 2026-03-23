@@ -40,27 +40,41 @@ body {
 }
 
 .lobby-container {
-    max-width: 600px;
-    margin: 50px auto;
-    padding: 2rem;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    backdrop-filter: blur(10px);
-    overflow-y: auto;
-    max-height: calc(100vh - 40px);
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+    justify-content: center;
+}
+
+.lobby-hero {
+    text-align: center;
+    margin-bottom: 2.5rem;
 }
 
 .lobby-container h1 {
-    text-align: center;
-    margin-bottom: 2rem;
-    font-size: 2.5rem;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    font-size: 3.5rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #ffffff 0%, #FFD700 60%, #FFA500 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 2px 8px rgba(255, 215, 0, 0.35));
 }
 
-.lobby-form, .lobby-room {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+.lobby-tagline {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.65);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin: 0;
 }
 
 .lobby-input {
@@ -237,12 +251,13 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    margin-top: 1rem;
 }
 
 .btn-home {
-    padding: 1.2rem 1.5rem;
-    font-size: 1.2rem;
+    padding: 1.1rem 1.5rem;
+    font-size: 1.1rem;
+    border-radius: 14px;
+    letter-spacing: 0.01em;
 }
 
 .btn-outline {
@@ -252,8 +267,19 @@ body {
 }
 
 .btn-outline:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.12);
     border-color: white;
+}
+
+.lobby-form, .lobby-room {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 18px;
+    padding: 1.5rem;
+    backdrop-filter: blur(12px);
 }
 
 .player-list {
@@ -756,17 +782,15 @@ body {
 @media (max-width: 480px) {
     .lobby-container {
         margin: 0;
-        padding: 1rem;
-        border-radius: 0;
+        padding: 1.25rem 1rem;
         min-height: 100vh;
-        max-height: 100vh;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+        min-height: 100dvh;
+        justify-content: center;
     }
 
     .lobby-container h1 {
-        font-size: 1.6rem;
-        margin-bottom: 1rem;
+        font-size: 2.8rem;
+        margin-bottom: 0.4rem;
     }
 
     .game-header {
@@ -875,7 +899,7 @@ body {
     }
 
     .lobby-container h1 {
-        font-size: 2rem;
+        font-size: 2.8rem;
     }
 
     .card {
