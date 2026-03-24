@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zero – Offline</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            text-align: center;
+            padding: 2rem;
+            gap: 1.5rem;
+        }
+        .icon { font-size: 4rem; }
+        h1 { font-size: 2rem; font-weight: 700; }
+        p  { font-size: 1rem; color: rgba(255,255,255,0.8); max-width: 320px; line-height: 1.5; }
+        button {
+            margin-top: 0.5rem;
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 8px;
+            background: #FFD700;
+            color: #1e3c72;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        button:active { opacity: 0.85; }
+    </style>
+</head>
+<body>
+    <div class="icon">🃏</div>
+    <h1>You're Offline</h1>
+    <p>Zero needs an internet connection to play because it's a live multiplayer game.
+       Please reconnect and try again.</p>
+    <button onclick="location.reload()">Try Again</button>
+</body>
+</html>
