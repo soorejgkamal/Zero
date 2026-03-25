@@ -16,7 +16,7 @@
                 <span>Deck: @CurrentState.DeckCount cards</span>
                 @if (CurrentState.Phase == GamePhase.Playing)
                 {
-                    <span class="turn-indicator">
+                    <span class="turn-indicator @(IsMyTurn ? "my-turn" : "")">
                         @if (IsMyTurn)
                         {
                             <strong>YOUR TURN</strong>
@@ -132,6 +132,11 @@
                 OnCardSelected="@HandleCardSelected" />
         </div>
 
+        @if (ShowYourTurnToast)
+        {
+            <div class="your-turn-toast">🎴 YOUR TURN!</div>
+        }
+
         @if (!string.IsNullOrEmpty(ErrorMessage))
         {
             <div class="error-message">@ErrorMessage</div>
@@ -147,6 +152,10 @@
     private List<string> SelectedCards = new();
     private string? ErrorMessage;
     private bool ShowScoreboard = false;
+    private bool ShowYourTurnToast = false;
+    private string? PreviousCurrentPlayerId;
+    // Toast display: 0.3s appear + 1.5s visible + 0.5s fade = 2.3s total (matches CSS animation)
+    private const int YourTurnToastDurationMs = 2300;
 
     private bool IsMyTurn => CurrentState?.CurrentPlayerId == GameService.PlayerId;
     private List<Card> MyHand => CurrentState?.Players.FirstOrDefault(p => p.Id == GameService.PlayerId)?.Hand ?? new List<Card>();
@@ -172,11 +181,28 @@
 
     private void HandleGameStateUpdated(GameStateDto state)
     {
+        // Detect when it becomes this player's turn and show toast
+        bool becameMyTurn = state.Phase == GamePhase.Playing
+            && state.CurrentPlayerId == GameService.PlayerId
+            && PreviousCurrentPlayerId != GameService.PlayerId;
+
+        PreviousCurrentPlayerId = state.CurrentPlayerId;
         CurrentState = state;
         
         if (state.Phase == GamePhase.Lobby)
         {
             Navigation.NavigateTo("/");
+        }
+
+        if (becameMyTurn)
+        {
+            ShowYourTurnToast = true;
+            Task.Run(async () =>
+            {
+                await Task.Delay(YourTurnToastDurationMs);
+                ShowYourTurnToast = false;
+                await InvokeAsync(StateHasChanged);
+            });
         }
         
         InvokeAsync(StateHasChanged);
