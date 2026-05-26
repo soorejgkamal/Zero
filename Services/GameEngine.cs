@@ -59,22 +59,45 @@ public static class GameEngine
         var suit = nonJokers[0].Suit;
         if (nonJokers.Any(c => c.Suit != suit)) return false;
         
-        var sorted = SortSequenceCards(cards);
-        return AreConsecutiveWithJokers(sorted);
+        // Try Ace as high (rank 14) – standard interpretation
+        var sorted = SortSequenceCards(cards, aceIsLow: false);
+        if (AreConsecutiveWithJokers(sorted, aceIsLow: false)) return true;
+        
+        // Try Ace as low (rank 1) when the sequence contains an Ace
+        if (nonJokers.Any(c => c.Rank == Rank.Ace))
+        {
+            var sortedLow = SortSequenceCards(cards, aceIsLow: true);
+            if (AreConsecutiveWithJokers(sortedLow, aceIsLow: true)) return true;
+        }
+        
+        return false;
     }
     
     public static List<Card> SortSequenceCards(List<Card> cards)
     {
-        var nonJokers = cards.Where(c => !c.IsJoker).OrderBy(c => (int)c.Rank!).ToList();
+        // Auto-detect whether Ace should be treated as low
+        var nonJokersSortedHigh = cards.Where(c => !c.IsJoker).OrderBy(c => (int)c.Rank!).ToList();
+        bool aceIsLow = ShouldUseAceLow(nonJokersSortedHigh);
+        return SortSequenceCards(cards, aceIsLow);
+    }
+    
+    private static List<Card> SortSequenceCards(List<Card> cards, bool aceIsLow)
+    {
         var jokers = cards.Where(c => c.IsJoker).ToList();
+        Func<Card, int> getRank = aceIsLow
+            ? (c => c.Rank == Rank.Ace ? 1 : (int)c.Rank!)
+            : (c => (int)c.Rank!);
+        
+        var nonJokers = cards.Where(c => !c.IsJoker).OrderBy(getRank).ToList();
         
         if (nonJokers.Count == 0) return cards;
         
         var result = new List<Card>();
         int jokerIdx = 0;
         
-        int minRank = (int)nonJokers.First().Rank!;
-        int maxRank = (int)nonJokers.Last().Rank!;
+        var ranks = nonJokers.Select(getRank).ToList();
+        int minRank = ranks.First();
+        int maxRank = ranks.Last();
         int rangeNeeded = maxRank - minRank + 1;
         int gaps = rangeNeeded - nonJokers.Count;
         
@@ -83,7 +106,7 @@ public static class GameEngine
             int nonJokerPos = 0;
             for (int r = minRank; r <= maxRank; r++)
             {
-                if (nonJokerPos < nonJokers.Count && (int)nonJokers[nonJokerPos].Rank! == r)
+                if (nonJokerPos < nonJokers.Count && ranks[nonJokerPos] == r)
                 {
                     result.Add(nonJokers[nonJokerPos++]);
                 }
@@ -104,18 +127,57 @@ public static class GameEngine
         return result;
     }
     
-    private static bool AreConsecutiveWithJokers(List<Card> sortedCards)
+    /// <summary>
+    /// Minimum rank of other (non-Ace) cards in order for Ace to be treated as rank 1 (low).
+    /// This covers sequences such as A-2-3, A-2-3-4, A-joker-3, etc.
+    /// A King alongside an Ace always signals high-Ace (Q-K-A), so King overrides this threshold.
+    /// </summary>
+    private const int AceLowOtherRankThreshold = 5;
+
+    /// <summary>
+    /// Returns true when Ace should be treated as rank 1 (low) rather than rank 14 (high).
+    /// This applies when the sequence contains an Ace alongside low-rank cards (≤ AceLowOtherRankThreshold)
+    /// but no King (which would indicate a high-Ace Q-K-A sequence).
+    /// </summary>
+    private static bool ShouldUseAceLow(List<Card> nonJokersSortedHigh)
     {
-        var nonJokers = sortedCards.Where(c => !c.IsJoker).OrderBy(c => (int)c.Rank!).ToList();
+        if (!nonJokersSortedHigh.Any(c => c.Rank == Rank.Ace)) return false;
+        var otherRanks = nonJokersSortedHigh.Where(c => c.Rank != Rank.Ace)
+                                             .Select(c => (int)c.Rank!).ToList();
+        if (!otherRanks.Any()) return false;
+        return otherRanks.Min() <= AceLowOtherRankThreshold
+            && !nonJokersSortedHigh.Any(c => c.Rank == Rank.King);
+    }
+
+    /// <summary>
+    /// Returns true when an Ace card is in the low (rank-1) position for an existing sequence.
+    /// Used by CanAddToLeft / CanAddMultipleToLeft to determine effective left rank.
+    /// </summary>
+    private static bool IsSequenceAceLow(Sequence seq)
+    {
+        var firstNonJoker = seq.Cards.FirstOrDefault(c => !c.IsJoker);
+        if (firstNonJoker?.Rank != Rank.Ace) return false;
+        var secondNonJoker = seq.Cards.Where(c => !c.IsJoker).Skip(1).FirstOrDefault();
+        return secondNonJoker != null && (int)secondNonJoker.Rank! <= AceLowOtherRankThreshold;
+    }
+    
+    private static bool AreConsecutiveWithJokers(List<Card> sortedCards, bool aceIsLow = false)
+    {
+        Func<Card, int> getRank = aceIsLow
+            ? (c => c.Rank == Rank.Ace ? 1 : (int)c.Rank!)
+            : (c => (int)c.Rank!);
+        
+        var nonJokers = sortedCards.Where(c => !c.IsJoker).OrderBy(getRank).ToList();
         if (nonJokers.Count == 0) return false;
         
         int jokerCount = sortedCards.Count(c => c.IsJoker);
-        int minRank = (int)nonJokers.First().Rank!;
-        int maxRank = (int)nonJokers.Last().Rank!;
+        var ranks = nonJokers.Select(getRank).ToList();
+        int minRank = ranks.First();
+        int maxRank = ranks.Last();
         
-        for (int i = 0; i < nonJokers.Count - 1; i++)
+        for (int i = 0; i < ranks.Count - 1; i++)
         {
-            if (nonJokers[i].Rank == nonJokers[i + 1].Rank) return false;
+            if (ranks[i] == ranks[i + 1]) return false;
         }
         
         int rangeCovered = maxRank - minRank + 1;
@@ -141,9 +203,17 @@ public static class GameEngine
         int jokersAtStartOfSeq = seq.Cards.TakeWhile(c => c.IsJoker).Count();
         var firstNonJokerOfSeq = seq.Cards.FirstOrDefault(c => !c.IsJoker);
         if (firstNonJokerOfSeq == null) return false;
-        int effectiveLeftRank = (int)firstNonJokerOfSeq.Rank! - jokersAtStartOfSeq;
 
-        if (nonJokersNew.Any(c => (int)c.Rank! >= effectiveLeftRank)) return false;
+        // Detect Ace-low sequence (Ace is the leftmost non-joker, followed by low cards)
+        bool seqIsAceLow = IsSequenceAceLow(seq);
+
+        int effectiveLeftRank = seqIsAceLow
+            ? 1 - jokersAtStartOfSeq
+            : (int)firstNonJokerOfSeq.Rank! - jokersAtStartOfSeq;
+
+        // Non-Ace new cards must be strictly below effectiveLeftRank.
+        // Ace is excluded here because it may act as rank 1 (handled by IsValidSequence).
+        if (nonJokersNew.Where(c => c.Rank != Rank.Ace).Any(c => (int)c.Rank! >= effectiveLeftRank)) return false;
 
         var combined = cards.Concat(seq.Cards).ToList();
         return IsValidSequence(combined);
@@ -184,10 +254,20 @@ public static class GameEngine
         if (card.Suit != leftMostNonJoker.Suit) return false;
         
         int jokersAtStart = seq.Cards.TakeWhile(c => c.IsJoker).Count();
-        int leftmostNonJokerRank = (int)leftMostNonJoker.Rank!;
-        int effectiveLeftRank = leftmostNonJokerRank - jokersAtStart;
+
+        // Detect Ace-low sequence: Ace is leftmost non-joker, followed by a low card
+        bool seqIsAceLow = IsSequenceAceLow(seq);
+
+        int effectiveLeftRank = seqIsAceLow
+            ? 1 - jokersAtStart   // Ace acts as rank 1
+            : (int)leftMostNonJoker.Rank! - jokersAtStart;
+
+        // Special case: Ace can be added to the left when sequence starts at rank 2 (Ace acts as rank 1)
+        if (!seqIsAceLow && card.Rank == Rank.Ace && effectiveLeftRank == 2)
+            return true;
         
-        return (int)card.Rank! == effectiveLeftRank - 1;
+        int cardRankValue = (int)card.Rank!;
+        return cardRankValue == effectiveLeftRank - 1;
     }
     
     public static bool CanAddToRight(Sequence seq, Card card)
