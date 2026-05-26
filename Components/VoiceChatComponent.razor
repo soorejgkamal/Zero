@@ -1,0 +1,195 @@
+@implements IDisposable
+@inject GameService GameService
+@inject IJSRuntime JS
+
+@if (GameService.RoomId != null)
+{
+    <div class="voice-chat">
+        @if (!_isInVoice)
+        {
+            <button class="voice-join-btn" @onclick="JoinVoice" disabled="@_isJoining" title="Join voice chat">
+                @if (_isJoining)
+                {
+                    <span class="voice-spinner"></span>
+                    <span>Connecting…</span>
+                }
+                else
+                {
+                    <span>🎙</span>
+                    <span>Voice</span>
+                }
+            </button>
+        }
+        else
+        {
+            <div class="voice-active-panel">
+                <button class="voice-mic-btn @(_isMuted ? "is-muted" : "")"
+                        @onclick="ToggleMute"
+                        title="@(_isMuted ? "Unmute" : "Mute")">
+                    @(_isMuted ? "🔇" : "🎙")
+                </button>
+                <div class="voice-participants">
+                    @foreach (var p in _participants)
+                    {
+                        <span class="voice-chip @(p.IsSelf ? "voice-chip-self" : "")">
+                            @p.Name
+                        </span>
+                    }
+                </div>
+                <button class="voice-leave-btn" @onclick="LeaveVoice" title="Leave voice">✕</button>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(_micError))
+        {
+            <span class="voice-error">@_micError</span>
+        }
+    </div>
+}
+
+@code {
+    private record Participant(string ConnectionId, string Name, bool IsSelf);
+
+    private bool _isInVoice;
+    private bool _isMuted;
+    private bool _isJoining;
+    private string? _micError;
+    private List<Participant> _participants = new();
+    private DotNetObjectReference<VoiceChatComponent>? _jsRef;
+
+    private string MyName =>
+        GameService.CurrentGameState?.Players
+            .FirstOrDefault(p => p.Id == GameService.PlayerId)?.Name ?? "You";
+
+    protected override void OnInitialized()
+    {
+        GameService.OnVoiceJoined      += HandleVoiceJoined;
+        GameService.OnVoicePeerJoined  += HandleVoicePeerJoined;
+        GameService.OnVoicePeerLeft    += HandleVoicePeerLeft;
+        GameService.OnVoiceOffer       += HandleVoiceOffer;
+        GameService.OnVoiceAnswer      += HandleVoiceAnswer;
+        GameService.OnVoiceIceCandidate += HandleVoiceIceCandidate;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _jsRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("voiceChat.init", _jsRef);
+        }
+    }
+
+    // ── Button actions ────────────────────────────────────────────
+
+    private async Task JoinVoice()
+    {
+        _isJoining = true;
+        _micError = null;
+        StateHasChanged();
+        await GameService.JoinVoiceAsync();
+        // UI update comes via HandleVoiceJoined
+    }
+
+    private async Task LeaveVoice()
+    {
+        await GameService.LeaveVoiceAsync();
+        await JS.InvokeVoidAsync("voiceChat.leave");
+        _isInVoice = false;
+        _isMuted = false;
+        _participants.Clear();
+    }
+
+    private async Task ToggleMute()
+    {
+        _isMuted = await JS.InvokeAsync<bool>("voiceChat.toggleMute");
+    }
+
+    // ── SignalR event handlers ────────────────────────────────────
+
+    private void HandleVoiceJoined(List<VoicePeerDto> existingPeers)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _isJoining = false;
+            _isInVoice = true;
+            _participants = existingPeers
+                .Select(p => new Participant(p.ConnectionId, p.PlayerName, false))
+                .ToList();
+            _participants.Add(new Participant("self", MyName, true));
+
+            try
+            {
+                var peerIds = existingPeers.Select(p => p.ConnectionId).ToArray();
+                await JS.InvokeVoidAsync("voiceChat.joinVoice", peerIds);
+            }
+            catch
+            {
+                _micError = "Microphone access denied.";
+                _isInVoice = false;
+                _participants.Clear();
+                await GameService.LeaveVoiceAsync();
+            }
+            StateHasChanged();
+        });
+    }
+
+    private void HandleVoicePeerJoined(string connectionId, string playerName)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _participants.Add(new Participant(connectionId, playerName, false));
+            if (_isInVoice) await JS.InvokeVoidAsync("voiceChat.addPeer", connectionId);
+            StateHasChanged();
+        });
+    }
+
+    private void HandleVoicePeerLeft(string connectionId)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _participants.RemoveAll(p => p.ConnectionId == connectionId);
+            await JS.InvokeVoidAsync("voiceChat.removePeer", connectionId);
+            StateHasChanged();
+        });
+    }
+
+    private void HandleVoiceOffer(string from, string sdp)
+    {
+        _ = InvokeAsync(async () => await JS.InvokeVoidAsync("voiceChat.handleOffer", from, sdp));
+    }
+
+    private void HandleVoiceAnswer(string from, string sdp)
+    {
+        _ = InvokeAsync(async () => await JS.InvokeVoidAsync("voiceChat.handleAnswer", from, sdp));
+    }
+
+    private void HandleVoiceIceCandidate(string from, string candidate)
+    {
+        _ = InvokeAsync(async () => await JS.InvokeVoidAsync("voiceChat.handleIceCandidate", from, candidate));
+    }
+
+    // ── JS-invokable relay methods ────────────────────────────────
+
+    [JSInvokable]
+    public async Task SendVoiceOffer(string targetConnectionId, string sdp)
+        => await GameService.SendVoiceOfferAsync(targetConnectionId, sdp);
+
+    [JSInvokable]
+    public async Task SendVoiceAnswer(string targetConnectionId, string sdp)
+        => await GameService.SendVoiceAnswerAsync(targetConnectionId, sdp);
+
+    [JSInvokable]
+    public async Task SendVoiceIceCandidate(string targetConnectionId, string candidate)
+        => await GameService.SendVoiceIceCandidateAsync(targetConnectionId, candidate);
+
+    public void Dispose()
+    {
+        GameService.OnVoiceJoined      -= HandleVoiceJoined;
+        GameService.OnVoicePeerJoined  -= HandleVoicePeerJoined;
+        GameService.OnVoicePeerLeft    -= HandleVoicePeerLeft;
+        GameService.OnVoiceOffer       -= HandleVoiceOffer;
+        GameService.OnVoiceAnswer      -= HandleVoiceAnswer;
+        GameService.OnVoiceIceCandidate -= HandleVoiceIceCandidate;
+        _jsRef?.Dispose();
+    }
+}

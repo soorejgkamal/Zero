@@ -17,6 +17,14 @@ public class GameService
     public event Action<List<string>>? OnPlayerEliminated;
     public event Action<string>? OnError;
 
+    // Voice chat
+    public event Action<List<VoicePeerDto>>? OnVoiceJoined;
+    public event Action<string, string>? OnVoicePeerJoined;
+    public event Action<string>? OnVoicePeerLeft;
+    public event Action<string, string>? OnVoiceOffer;
+    public event Action<string, string>? OnVoiceAnswer;
+    public event Action<string, string>? OnVoiceIceCandidate;
+
     public string? PlayerId => _playerId;
     public string? RoomId => _roomId;
     public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
@@ -69,6 +77,13 @@ public class GameService
             OnError?.Invoke(message);
         });
 
+        _hubConnection.On<List<VoicePeerDto>>("VoiceJoined", (peers) => OnVoiceJoined?.Invoke(peers));
+        _hubConnection.On<string, string>("VoicePeerJoined", (connId, name) => OnVoicePeerJoined?.Invoke(connId, name));
+        _hubConnection.On<string>("VoicePeerLeft", (connId) => OnVoicePeerLeft?.Invoke(connId));
+        _hubConnection.On<string, string>("VoiceOffer", (from, sdp) => OnVoiceOffer?.Invoke(from, sdp));
+        _hubConnection.On<string, string>("VoiceAnswer", (from, sdp) => OnVoiceAnswer?.Invoke(from, sdp));
+        _hubConnection.On<string, string>("VoiceIceCandidate", (from, c) => OnVoiceIceCandidate?.Invoke(from, c));
+
         await _hubConnection.StartAsync();
     }
 
@@ -106,6 +121,36 @@ public class GameService
     {
         if (_hubConnection == null) return;
         await _hubConnection.SendAsync("AddToSet", sequenceId, cardIds, addToLeft);
+    }
+
+    public async Task JoinVoiceAsync()
+    {
+        if (_hubConnection == null) return;
+        await _hubConnection.SendAsync("JoinVoice");
+    }
+
+    public async Task LeaveVoiceAsync()
+    {
+        if (_hubConnection == null) return;
+        await _hubConnection.SendAsync("LeaveVoice");
+    }
+
+    public async Task SendVoiceOfferAsync(string targetConnectionId, string sdp)
+    {
+        if (_hubConnection == null) return;
+        await _hubConnection.SendAsync("SendVoiceOffer", targetConnectionId, sdp);
+    }
+
+    public async Task SendVoiceAnswerAsync(string targetConnectionId, string sdp)
+    {
+        if (_hubConnection == null) return;
+        await _hubConnection.SendAsync("SendVoiceAnswer", targetConnectionId, sdp);
+    }
+
+    public async Task SendVoiceIceCandidateAsync(string targetConnectionId, string candidate)
+    {
+        if (_hubConnection == null) return;
+        await _hubConnection.SendAsync("SendVoiceIceCandidate", targetConnectionId, candidate);
     }
 
     public async ValueTask DisposeAsync()

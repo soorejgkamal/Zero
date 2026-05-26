@@ -11,6 +11,9 @@ public class GameHub : Hub
     private static readonly ConcurrentDictionary<string, string> _connectionToRoom = new();
     private static readonly ConcurrentDictionary<string, string> _connectionToPlayer = new();
 
+    // roomId -> { connectionId -> playerName }
+    private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> _roomVoice = new();
+
     public async Task CreateRoom(string playerName, int maxPlayers = 6)
     {
         playerName = playerName?.Trim() ?? "";
@@ -285,11 +288,66 @@ public class GameHub : Hub
         await BroadcastGameState(room, null);
     }
 
+    // ── Voice Chat Signaling ─────────────────────────────────────
+
+    public async Task JoinVoice()
+    {
+        if (!GetCurrentRoomAndPlayer(out var room, out var player)) return;
+
+        var participants = _roomVoice.GetOrAdd(room!.RoomId, _ => new ConcurrentDictionary<string, string>());
+
+        var existingPeers = participants
+            .Where(kv => kv.Key != Context.ConnectionId)
+            .Select(kv => new VoicePeerDto(kv.Key, kv.Value))
+            .ToList();
+
+        participants[Context.ConnectionId] = player!.Name;
+
+        foreach (var peer in existingPeers)
+            await Clients.Client(peer.ConnectionId).SendAsync("VoicePeerJoined", Context.ConnectionId, player.Name);
+
+        await Clients.Caller.SendAsync("VoiceJoined", existingPeers);
+    }
+
+    public async Task LeaveVoice()
+    {
+        await RemoveFromVoice(Context.ConnectionId);
+    }
+
+    public async Task SendVoiceOffer(string targetConnectionId, string sdp)
+    {
+        await Clients.Client(targetConnectionId).SendAsync("VoiceOffer", Context.ConnectionId, sdp);
+    }
+
+    public async Task SendVoiceAnswer(string targetConnectionId, string sdp)
+    {
+        await Clients.Client(targetConnectionId).SendAsync("VoiceAnswer", Context.ConnectionId, sdp);
+    }
+
+    public async Task SendVoiceIceCandidate(string targetConnectionId, string candidate)
+    {
+        await Clients.Client(targetConnectionId).SendAsync("VoiceIceCandidate", Context.ConnectionId, candidate);
+    }
+
+    private async Task RemoveFromVoice(string connectionId)
+    {
+        if (!_connectionToRoom.TryGetValue(connectionId, out var roomId)) return;
+        if (!_roomVoice.TryGetValue(roomId, out var participants)) return;
+        if (!participants.TryRemove(connectionId, out _)) return;
+
+        foreach (var connId in participants.Keys.ToList())
+            await Clients.Client(connId).SendAsync("VoicePeerLeft", connectionId);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         if (_connectionToRoom.TryGetValue(Context.ConnectionId, out var roomId) &&
             _connectionToPlayer.TryGetValue(Context.ConnectionId, out var playerId))
         {
+            await RemoveFromVoice(Context.ConnectionId);
+
             if (_rooms.TryGetValue(roomId, out var room))
             {
                 var player = room.Players.FirstOrDefault(p => p.Id == playerId);

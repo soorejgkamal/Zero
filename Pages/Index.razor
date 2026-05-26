@@ -76,6 +76,8 @@
                     }
                 </div>
 
+                <VoiceChatComponent />
+
                 @if (CurrentState?.Players.Count >= 2 && CurrentState?.Players.FirstOrDefault()?.Id == GameService.PlayerId)
                 {
                     <button @onclick="StartGame" class="btn btn-primary form-submit-btn">
