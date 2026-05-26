@@ -119,12 +119,30 @@
 
             try
             {
+                // Cast to object so the string[] is passed as a single JS array argument,
+                // not expanded by C#'s params object[] into individual string arguments.
                 var peerIds = existingPeers.Select(p => p.ConnectionId).ToArray();
-                await JS.InvokeVoidAsync("voiceChat.joinVoice", peerIds);
+                await JS.InvokeVoidAsync("voiceChat.joinVoice", (object)peerIds);
             }
-            catch
+            catch (JSException ex) when (ex.Message.Contains("HTTPS_REQUIRED"))
             {
-                _micError = "Microphone access denied.";
+                _micError = "Voice requires HTTPS. Run the app with a trusted certificate.";
+                _isInVoice = false;
+                _participants.Clear();
+                await GameService.LeaveVoiceAsync();
+            }
+            catch (JSException ex) when (
+                ex.Message.Contains("NotAllowed") || ex.Message.Contains("Permission") ||
+                ex.Message.Contains("denied") || ex.Message.Contains("dismissed"))
+            {
+                _micError = "Microphone access denied — check browser permissions.";
+                _isInVoice = false;
+                _participants.Clear();
+                await GameService.LeaveVoiceAsync();
+            }
+            catch (Exception ex)
+            {
+                _micError = $"Voice error: {ex.Message}";
                 _isInVoice = false;
                 _participants.Clear();
                 await GameService.LeaveVoiceAsync();

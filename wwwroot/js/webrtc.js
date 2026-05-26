@@ -16,28 +16,42 @@
             _dotNetRef = dotNetRef;
         },
 
-        // Called when we join voice. existingPeerIds is string[].
-        // Throws if microphone access is denied (propagates to C# as JSException).
+        // Called when we join. existingPeerIds is a JS Array of strings.
+        // Throws only if getUserMedia fails — offer creation is kicked off
+        // asynchronously so the Blazor InvokeVoidAsync can return before
+        // any .NET callbacks are made (avoids Blazor Server re-entrancy).
         async joinVoice(existingPeerIds) {
+            if (!navigator.mediaDevices?.getUserMedia) {
+                throw new Error('HTTPS_REQUIRED');
+            }
             _localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-            for (const id of existingPeerIds) {
-                await createOfferTo(id);
+
+            // Defer offer creation so this promise resolves first,
+            // freeing the Blazor circuit before any .NET callbacks fire.
+            if (existingPeerIds && existingPeerIds.length) {
+                setTimeout(() => {
+                    for (const id of existingPeerIds) {
+                        createOfferTo(id).catch(console.error);
+                    }
+                }, 0);
             }
         },
 
-        // Called when a new peer joins (from existing participants' side).
-        // Creates a peer connection ready to receive their offer.
+        // Called when a new peer joins (from existing members' perspective).
         addPeer(connectionId) {
             if (!_peers.has(connectionId)) createPeerConnection(connectionId);
         },
 
+        // C# calls this when we receive an offer. We create an answer and
+        // notify .NET asynchronously so we don't block the return.
         async handleOffer(fromConnectionId, sdp) {
             let pc = _peers.get(fromConnectionId);
             if (!pc) pc = createPeerConnection(fromConnectionId);
             await pc.setRemoteDescription({ type: 'offer', sdp });
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
-            await _dotNetRef.invokeMethodAsync('SendVoiceAnswer', fromConnectionId, answer.sdp);
+            // Fire-and-forget — circuit is free by the time this resolves
+            notify('SendVoiceAnswer', fromConnectionId, answer.sdp);
         },
 
         async handleAnswer(fromConnectionId, sdp) {
@@ -48,20 +62,16 @@
         async handleIceCandidate(fromConnectionId, candidateJson) {
             const pc = _peers.get(fromConnectionId);
             if (!pc || !candidateJson) return;
-            try {
-                await pc.addIceCandidate(JSON.parse(candidateJson));
-            } catch (e) {
-                // Benign: can happen if remote description isn't set yet; ignore
-            }
+            try { await pc.addIceCandidate(JSON.parse(candidateJson)); } catch (_) {}
         },
 
-        // Toggle mute. Returns true if now muted.
+        // Returns true if now muted.
         toggleMute() {
             if (!_localStream) return true;
             const tracks = _localStream.getAudioTracks();
-            const nowEnabled = !tracks[0]?.enabled;
-            tracks.forEach(t => { t.enabled = nowEnabled; });
-            return !nowEnabled; // isMuted
+            const enable = !tracks[0]?.enabled;
+            tracks.forEach(t => { t.enabled = enable; });
+            return !enable;
         },
 
         removePeer(connectionId) {
@@ -85,28 +95,29 @@
         },
     };
 
+    // Fire-and-forget .NET notification — never awaited from JS so
+    // we never block inside a Blazor-awaited function.
+    function notify(method, ...args) {
+        if (_dotNetRef) _dotNetRef.invokeMethodAsync(method, ...args).catch(console.error);
+    }
+
     async function createOfferTo(connectionId) {
         const pc = createPeerConnection(connectionId);
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        await _dotNetRef.invokeMethodAsync('SendVoiceOffer', connectionId, offer.sdp);
+        notify('SendVoiceOffer', connectionId, offer.sdp);
     }
 
     function createPeerConnection(connectionId) {
         const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
         _peers.set(connectionId, pc);
 
-        // Add our microphone so the remote peer can hear us
         if (_localStream) {
             _localStream.getTracks().forEach(t => pc.addTrack(t, _localStream));
         }
 
         pc.onicecandidate = (e) => {
-            if (e.candidate) {
-                _dotNetRef.invokeMethodAsync(
-                    'SendVoiceIceCandidate', connectionId, JSON.stringify(e.candidate)
-                );
-            }
+            if (e.candidate) notify('SendVoiceIceCandidate', connectionId, JSON.stringify(e.candidate));
         };
 
         pc.ontrack = (e) => {
@@ -124,7 +135,7 @@
         return pc;
     }
 
-    function audioId(connectionId) {
-        return 'va-' + connectionId.replace(/[^a-zA-Z0-9]/g, '_');
+    function audioId(id) {
+        return 'va-' + id.replace(/[^a-zA-Z0-9]/g, '_');
     }
 })();
