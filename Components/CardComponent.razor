@@ -1,4 +1,6 @@
 <div class="card @(IsSelected ? "card-selected" : "") @(IsHighlighted ? "card-highlighted" : "") @(IsNewlyDrawn ? "card-newly-drawn" : "") @(card.IsRed ? "card-red" : "card-black")"
+     data-card-id="@card.Id"
+     draggable="@(CanDrag ? "true" : "false")"
      @onclick="HandleClick">
     @if (card.IsJoker)
     {
@@ -23,6 +25,7 @@
     [Parameter] public bool IsSelected { get; set; }
     [Parameter] public bool IsHighlighted { get; set; }
     [Parameter] public bool IsNewlyDrawn { get; set; }
+    [Parameter] public bool CanDrag { get; set; }
     [Parameter] public EventCallback OnClick { get; set; }
 
     private async Task HandleClick()

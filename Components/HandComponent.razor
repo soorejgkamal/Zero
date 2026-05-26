@@ -15,11 +15,12 @@
     <div class="hand-cards">
         @foreach (var card in SortedCards)
         {
-            <CardComponent 
-                card="@card" 
+            <CardComponent
+                card="@card"
                 IsSelected="@SelectedCardIds.Contains(card.Id)"
                 IsNewlyDrawn="false"
                 IsHighlighted="false"
+                CanDrag="@CanDrag"
                 OnClick="@(() => OnCardClick(card.Id))" />
         }
     </div>
@@ -29,6 +30,7 @@
     [Parameter] public List<Card> Cards { get; set; } = new();
     [Parameter] public List<string> SelectedCardIds { get; set; } = new();
     [Parameter] public string? NewlyDrawnCardId { get; set; }
+    [Parameter] public bool CanDrag { get; set; }
     [Parameter] public EventCallback<string> OnCardSelected { get; set; }
 
     private Card? DrawnCardPreview;

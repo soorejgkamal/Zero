@@ -78,7 +78,7 @@
             }
         </div>
 
-        <div class="table-area">
+        <div class="table-area" id="table-drop-zone">
             <h3 class="table-area-heading">Table Sets</h3>
             <div class="table-sets">
                 @if (CurrentState.TableSets.Any())
@@ -165,9 +165,10 @@
             }
 
             <HandComponent
-                Cards="@MyHand" 
+                Cards="@MyHand"
                 SelectedCardIds="@SelectedCards"
                 NewlyDrawnCardId="@CurrentState.NewlyDrawnCardId"
+                CanDrag="@(IsMyTurn && CurrentState?.Phase == GamePhase.Playing)"
                 OnCardSelected="@HandleCardSelected" />
         </div>
 
@@ -186,6 +187,7 @@
 @code {
     [Inject] private GameService GameService { get; set; } = null!;
     [Inject] private NavigationManager Navigation { get; set; } = null!;
+    [Inject] private IJSRuntime JS { get; set; } = null!;
 
     private GameStateDto? CurrentState;
     private List<string> SelectedCards = new();
@@ -193,6 +195,7 @@
     private bool ShowScoreboard = false;
     private bool ShowTurnBanner = false;
     private bool _wasMyTurn = false;
+    private DotNetObjectReference<Game>? _dragRef;
 
     private bool IsMyTurn => CurrentState?.CurrentPlayerId == GameService.PlayerId;
     private bool CanDiscard => IsMyTurn && CurrentState?.Phase == GamePhase.Playing && SelectedCards.Count == 1;
@@ -229,6 +232,25 @@
         {
             CurrentState = GameService.CurrentGameState;
         }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dragRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("cardDragDrop.init", _dragRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnCardDroppedToDiscard(string cardId)
+    {
+        if (!IsMyTurn || CurrentState?.Phase != GamePhase.Playing) return;
+        ErrorMessage = null;
+        await GameService.DiscardAndDrawAsync(cardId);
+        SelectedCards.Remove(cardId);
+        await InvokeAsync(StateHasChanged);
     }
 
     private void HandleGameStateUpdated(GameStateDto state)
@@ -387,5 +409,6 @@
         GameService.OnGameStateUpdated -= HandleGameStateUpdated;
         GameService.OnError -= HandleError;
         GameService.OnRoundEnded -= HandleRoundEnded;
+        _dragRef?.Dispose();
     }
 }

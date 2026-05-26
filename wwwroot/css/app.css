@@ -823,6 +823,11 @@ body {
     flex-wrap: wrap;
 }
 
+.table-area.drop-zone-active {
+    box-shadow: inset 0 0 0 3px rgba(255, 100, 80, 0.7), inset 0 0 30px rgba(255, 80, 60, 0.15);
+    transition: box-shadow 0.15s;
+}
+
 .action-hint {
     font-size: 0.76rem;
     color: rgba(255, 255, 255, 0.55);
