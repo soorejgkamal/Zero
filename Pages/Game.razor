@@ -48,19 +48,38 @@
             </div>
         }
 
+        @if (ShowTurnBanner)
+        {
+            <div class="turn-banner">✨ Your Turn!</div>
+        }
+
         <div class="opponents-area">
             @foreach (var player in CurrentState.Players.Where(p => p.Id != GameService.PlayerId))
             {
+                var visibleCards = Math.Min(player.CardCount, 4);
                 <div class="opponent @(player.Id == CurrentState.CurrentPlayerId ? "current-turn" : "") @(player.IsEliminated ? "eliminated" : "")">
-                    <div class="opponent-name">@player.Name @(!player.IsConnected ? " (DC)" : "")</div>
-                    <div class="opponent-cards">@player.CardCount cards</div>
-                    <div class="opponent-score">Score: @player.Score</div>
+                    <div class="card-back-stack">
+                        @if (player.CardCount == 0)
+                        {
+                            <span class="no-cards-text">—</span>
+                        }
+                        else
+                        {
+                            @for (var i = 0; i < visibleCards; i++)
+                            {
+                                var offset = i * 6;
+                                <div class="card-back-mini" style="left: @(offset)px; z-index: @(i);"></div>
+                            }
+                        }
+                    </div>
+                    <div class="opponent-name">@player.Name @(!player.IsConnected ? "(DC)" : "")</div>
+                    <div class="opponent-info">@player.CardCount cards · @player.Score pts</div>
                 </div>
             }
         </div>
 
         <div class="table-area">
-            <h3>Table Sets</h3>
+            <h3 class="table-area-heading">Table Sets</h3>
             <div class="table-sets">
                 @if (CurrentState.TableSets.Any())
                 {
@@ -91,41 +110,61 @@
         @if (CurrentState.Phase == GamePhase.RoundEnd || CurrentState.Phase == GamePhase.GameOver)
         {
             <div class="round-end-overlay">
+                @for (var ci = 0; ci < 18; ci++)
+                {
+                    var leftPct = (int)(ci * 5.5 + 2);
+                    var delayMs = ci * 110;
+                    var durationMs = 2200 + (ci % 5) * 350;
+                    var confettiColor = GetConfettiColor(ci);
+                    <div class="confetti-piece" style="left: @(leftPct)%; animation-delay: @(delayMs)ms; animation-duration: @(durationMs)ms; background: @confettiColor;"></div>
+                }
                 <div class="round-end">
-                    <h2>@(CurrentState.Phase == GamePhase.GameOver ? "🏆 Game Over!" : "🎉 Round Ended!")</h2>
-                    <p>Winner: @GetPlayerName(CurrentState.WinnerId)</p>
-                    
-                    <ScoreBoardComponent Players="@CurrentState.Players" CurrentPlayerId="@CurrentState.CurrentPlayerId" />
-                    
-                    @if (CurrentState.Phase == GamePhase.GameOver)
-                    {
-                        <button @onclick="BackToLobby" class="btn btn-primary">Back to Lobby</button>
-                    }
-                    else
-                    {
-                        <button @onclick="StartNewRound" class="btn btn-primary">Start New Round</button>
-                    }
+                    <div class="winner-announcement">
+                        <span class="winner-trophy">@(CurrentState.Phase == GamePhase.GameOver ? "🏆" : "🎉")</span>
+                        <h2 class="winner-name">@GetPlayerName(CurrentState.WinnerId)</h2>
+                        <p class="winner-subtitle">@(CurrentState.Phase == GamePhase.GameOver ? "wins the game!" : "wins the round!")</p>
+                    </div>
+
+                    <ScoreBoardComponent Players="@CurrentState.Players" CurrentPlayerId="@CurrentState.CurrentPlayerId" ShowRanks="true" />
+
+                    <div class="round-end-action">
+                        @if (CurrentState.Phase == GamePhase.GameOver)
+                        {
+                            <button @onclick="BackToLobby" class="btn btn-primary">Back to Lobby</button>
+                        }
+                        else
+                        {
+                            <button @onclick="StartNewRound" class="btn btn-primary">Start New Round</button>
+                        }
+                    </div>
                 </div>
             </div>
         }
 
         <div class="player-area">
-            <div class="player-actions">
-                @if (CurrentState.Phase == GamePhase.Playing && IsMyTurn)
-                {
-                    @if (SelectedCards.Count == 1)
-                    {
-                        <button @onclick="DiscardAndDraw" class="btn btn-primary">Discard &amp; Draw</button>
-                    }
-                    @if (SelectedCards.Count >= 3)
-                    {
-                        <button @onclick="OpenSet" class="btn btn-success">Open Set (@SelectedCards.Count cards)</button>
-                    }
-                    <button @onclick="ClearSelection" class="btn btn-secondary">Clear Selection</button>
-                }
-            </div>
+            @if (CurrentState.Phase == GamePhase.Playing)
+            {
+                <div class="player-actions">
+                    <button @onclick="DiscardAndDraw" class="btn btn-primary"
+                            disabled="@(!CanDiscard)"
+                            title="@(!IsMyTurn ? "Wait for your turn" : "Select exactly 1 card to discard and draw")">
+                        Discard &amp; Draw
+                    </button>
+                    <button @onclick="OpenSet" class="btn btn-success"
+                            disabled="@(!CanOpenSet)"
+                            title="@(!IsMyTurn ? "Wait for your turn" : "Select 3 or more cards to open a set")">
+                        Open Set @(SelectedCards.Count >= 3 ? $"({SelectedCards.Count})" : "")
+                    </button>
+                    <button @onclick="ClearSelection" class="btn btn-secondary"
+                            disabled="@(SelectedCards.Count == 0)"
+                            title="Deselect all cards">
+                        Clear
+                    </button>
+                </div>
+                <p class="action-hint">@ActionHint</p>
+            }
 
-            <HandComponent 
+            <HandComponent
                 Cards="@MyHand" 
                 SelectedCardIds="@SelectedCards"
                 NewlyDrawnCardId="@CurrentState.NewlyDrawnCardId"
@@ -134,7 +173,12 @@
 
         @if (!string.IsNullOrEmpty(ErrorMessage))
         {
-            <div class="error-message">@ErrorMessage</div>
+            <div class="error-toast">
+                <span class="toast-icon">⚠️</span>
+                <span class="toast-message">@ErrorMessage</span>
+                <button class="toast-close" @onclick="DismissError">✕</button>
+                <div class="toast-progress"></div>
+            </div>
         }
     }
 </div>
@@ -147,8 +191,25 @@
     private List<string> SelectedCards = new();
     private string? ErrorMessage;
     private bool ShowScoreboard = false;
+    private bool ShowTurnBanner = false;
+    private bool _wasMyTurn = false;
 
     private bool IsMyTurn => CurrentState?.CurrentPlayerId == GameService.PlayerId;
+    private bool CanDiscard => IsMyTurn && CurrentState?.Phase == GamePhase.Playing && SelectedCards.Count == 1;
+    private bool CanOpenSet => IsMyTurn && CurrentState?.Phase == GamePhase.Playing && SelectedCards.Count >= 3;
+
+    private string ActionHint
+    {
+        get
+        {
+            if (CurrentState?.Phase != GamePhase.Playing) return "";
+            if (!IsMyTurn) return "Waiting for your turn...";
+            if (SelectedCards.Count == 0) return "Select a card to begin";
+            if (SelectedCards.Count == 1) return "Discard & draw, or select more cards to open a set";
+            if (SelectedCards.Count == 2) return "Select 1 more card to open a set";
+            return $"{SelectedCards.Count} cards selected — open a set or extend a table set";
+        }
+    }
     private List<Card> MyHand => CurrentState?.Players.FirstOrDefault(p => p.Id == GameService.PlayerId)?.Hand ?? new List<Card>();
 
     protected override async Task OnInitializedAsync()
@@ -173,20 +234,36 @@
     private void HandleGameStateUpdated(GameStateDto state)
     {
         CurrentState = state;
-        
+
         if (state.Phase == GamePhase.Lobby)
         {
             Navigation.NavigateTo("/");
         }
-        
+
+        var isMyTurnNow = state.CurrentPlayerId == GameService.PlayerId && state.Phase == GamePhase.Playing;
+        if (isMyTurnNow && !_wasMyTurn)
+        {
+            _ = ShowTurnBannerAsync();
+        }
+        _wasMyTurn = isMyTurnNow;
+
         InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ShowTurnBannerAsync()
+    {
+        ShowTurnBanner = true;
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(2800);
+        ShowTurnBanner = false;
+        await InvokeAsync(StateHasChanged);
     }
 
     private void HandleError(string message)
     {
         ErrorMessage = message;
         InvokeAsync(StateHasChanged);
-        
+
         Task.Run(async () =>
         {
             await Task.Delay(3000);
@@ -194,6 +271,22 @@
             await InvokeAsync(StateHasChanged);
         });
     }
+
+    private void DismissError()
+    {
+        ErrorMessage = null;
+    }
+
+    private static string GetConfettiColor(int i) => (i % 7) switch
+    {
+        0 => "#FFD700",
+        1 => "#FF5252",
+        2 => "#69F0AE",
+        3 => "#40C4FF",
+        4 => "#FF4081",
+        5 => "#FFAB40",
+        _ => "#E040FB"
+    };
 
     private void HandleRoundEnded(string winnerId)
     {

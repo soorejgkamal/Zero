@@ -1,111 +1,175 @@
 @page "/"
 
+<span class="suit-deco suit-1" aria-hidden="true">♠</span>
+<span class="suit-deco suit-2" aria-hidden="true">♥</span>
+<span class="suit-deco suit-3" aria-hidden="true">♦</span>
+<span class="suit-deco suit-4" aria-hidden="true">♣</span>
+
+@if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="error-toast">
+        <span class="toast-icon">⚠️</span>
+        <span class="toast-message">@ErrorMessage</span>
+        <button class="toast-close" @onclick="DismissError">✕</button>
+        <div class="toast-progress" style="animation-duration: 4s;"></div>
+    </div>
+}
+
 <div class="lobby-container">
+
     <div class="lobby-hero">
-        <h1><span class="lobby-hero-icon">🃏</span> Zero</h1>
+        <div class="hero-suits" aria-hidden="true">
+            <span>♠</span>
+            <span class="red-suit">♥</span>
+            <span class="red-suit">♦</span>
+            <span>♣</span>
+        </div>
+        <h1>Zero</h1>
         <p class="lobby-tagline">The fast-paced card set game</p>
     </div>
 
-    @if (!string.IsNullOrEmpty(ErrorMessage))
-    {
-        <div class="error-message">@ErrorMessage</div>
-    }
+    <div class="@(_isGoingBack ? "screen-enter-back" : "screen-enter")" @key="ScreenKey">
 
-    @if (!string.IsNullOrEmpty(RoomId))
-    {
-        <div class="lobby-room">
-            <h2>Room: <span class="room-code">@RoomId</span></h2>
-            <p class="room-code-hint">Share this 4-digit code with other players</p>
+        @if (!string.IsNullOrEmpty(RoomId))
+        {
+            <div class="room-screen">
+                <div class="room-code-card">
+                    <div class="room-code-card-label">Room Code</div>
+                    <div class="room-code-display">@RoomId</div>
+                    <div class="room-code-share-hint">Share with friends to join</div>
+                </div>
 
-            <div class="player-list">
-                <h3>Players (@(CurrentState?.Players.Count ?? 0)/@MaxPlayers)</h3>
-                @if (CurrentState != null)
-                {
-                    @foreach (var player in CurrentState.Players)
+                <div class="room-players-panel">
+                    <div class="room-players-header">
+                        <span>Players</span>
+                        <span class="room-player-count-badge">@(CurrentState?.Players.Count ?? 0) / @MaxPlayers</span>
+                    </div>
+
+                    @if (CurrentState != null)
                     {
-                        <div class="player-item">
-                            <span class="player-dot">●</span>
-                            @player.Name @(player.Id == GameService.PlayerId ? " (You)" : "")
+                        @foreach (var (player, idx) in CurrentState.Players.Select((p, i) => (p, i)))
+                        {
+                            var isHost = idx == 0;
+                            var initial = player.Name.Length > 0 ? player.Name[0].ToString().ToUpper() : "?";
+                            <div class="player-item">
+                                <div class="player-avatar" style="background: @GetAvatarGradient(idx);">@initial</div>
+                                <span class="player-item-name">@player.Name @(player.Id == GameService.PlayerId ? "(You)" : "")</span>
+                                @if (isHost)
+                                {
+                                    <span class="host-badge" title="Host">👑</span>
+                                }
+                            </div>
+                        }
+
+                        @for (var slot = CurrentState.Players.Count; slot < MaxPlayers; slot++)
+                        {
+                            <div class="player-item player-item-empty">
+                                <div class="player-avatar player-avatar-empty">+</div>
+                                <span class="player-empty-text">Waiting for player…</span>
+                            </div>
+                        }
+
+                        <div class="slots-progress">
+                            <div class="slots-progress-fill"
+                                 style="width: @(MaxPlayers > 0 ? CurrentState.Players.Count * 100 / MaxPlayers : 0)%;"></div>
                         </div>
                     }
+                </div>
+
+                @if (CurrentState?.Players.Count >= 2 && CurrentState?.Players.FirstOrDefault()?.Id == GameService.PlayerId)
+                {
+                    <button @onclick="StartGame" class="btn btn-primary form-submit-btn">
+                        Start Game →
+                    </button>
+                }
+                else if (CurrentState?.Players.Count < 2)
+                {
+                    <p class="waiting-indicator">Waiting for more players to join…</p>
+                }
+                else
+                {
+                    <p class="waiting-indicator">Waiting for host to start the game…</p>
                 }
             </div>
-
-            @if (CurrentState?.Players.Count >= 2 && CurrentState?.Players.FirstOrDefault()?.Id == GameService.PlayerId)
-            {
-                <button @onclick="StartGame" class="btn btn-success">Start Game</button>
-            }
-            else if (CurrentState?.Players.Count < 2)
-            {
-                <p class="waiting-message">Waiting for more players...</p>
-            }
-            else
-            {
-                <p class="waiting-message">Waiting for host to start...</p>
-            }
-        </div>
-    }
-    else if (CurrentScreen == Screen.Home)
-    {
-        <div class="home-actions">
-            <button @onclick="() => GoToScreen(Screen.Create)" class="btn btn-primary btn-home">
-                🎮 Create Game
-            </button>
-            <button @onclick="() => GoToScreen(Screen.Join)" class="btn btn-secondary btn-home">
-                🔑 Join Game
-            </button>
-        </div>
-    }
-    else if (CurrentScreen == Screen.Create)
-    {
-        <div class="lobby-form">
-            <input type="text" @bind="PlayerName" placeholder="Enter your name" class="lobby-input"
-                   autofocus title="Your display name in the game (max 30 characters)" maxlength="30" />
-
-            <div class="player-count-selector">
-                <label>Number of Players:</label>
-                <div class="player-count-buttons">
-                    @foreach (var count in new[] { 2, 3, 4, 5, 6 })
-                    {
-                        var c = count;
-                        <button class="player-count-btn @(MaxPlayers == c ? "selected" : "")"
-                                @onclick="() => MaxPlayers = c">@c</button>
-                    }
-                </div>
+        }
+        else if (CurrentScreen == Screen.Home)
+        {
+            <div class="home-actions">
+                <button class="action-tile action-tile-green" @onclick="() => GoToScreen(Screen.Create)">
+                    <div class="action-tile-icon">🎮</div>
+                    <div class="action-tile-body">
+                        <div class="action-tile-title">Create Game</div>
+                        <div class="action-tile-desc">Start a new room for friends</div>
+                    </div>
+                    <span class="action-tile-arrow">›</span>
+                </button>
+                <button class="action-tile action-tile-blue" @onclick="() => GoToScreen(Screen.Join)">
+                    <div class="action-tile-icon">🔑</div>
+                    <div class="action-tile-body">
+                        <div class="action-tile-title">Join Game</div>
+                        <div class="action-tile-desc">Enter a room code to join</div>
+                    </div>
+                    <span class="action-tile-arrow">›</span>
+                </button>
             </div>
+        }
+        else if (CurrentScreen == Screen.Create)
+        {
+            <div class="form-screen">
+                <button class="form-back-btn" @onclick="() => GoToScreen(Screen.Home)">← Back</button>
+                <h2 class="form-title">Create a Game</h2>
 
-            <div class="lobby-actions">
-                <button @onclick="CreateRoom" class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(PlayerName)">
+                <div class="form-section">
+                    <label class="form-label">Your Name</label>
+                    <input type="text" @bind="PlayerName" placeholder="Enter your name"
+                           class="lobby-input" autofocus maxlength="30" />
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label">Number of Players</label>
+                    <div class="player-count-grid">
+                        @foreach (var count in new[] { 2, 3, 4, 5, 6 })
+                        {
+                            var c = count;
+                            <button class="player-count-btn @(MaxPlayers == c ? "selected" : "")"
+                                    @onclick="() => MaxPlayers = c">@c</button>
+                        }
+                    </div>
+                </div>
+
+                <button @onclick="CreateRoom" class="btn btn-primary form-submit-btn"
+                        disabled="@string.IsNullOrWhiteSpace(PlayerName)">
                     Create Room
                 </button>
-                <button @onclick="() => GoToScreen(Screen.Home)" class="btn btn-outline">
-                    ← Back
-                </button>
             </div>
-        </div>
-    }
-    else if (CurrentScreen == Screen.Join)
-    {
-        <div class="lobby-form">
-            <input type="text" @bind="PlayerName" placeholder="Enter your name" class="lobby-input"
-                   autofocus title="Your display name in the game (max 30 characters)" maxlength="30" />
+        }
+        else if (CurrentScreen == Screen.Join)
+        {
+            <div class="form-screen">
+                <button class="form-back-btn" @onclick="() => GoToScreen(Screen.Home)">← Back</button>
+                <h2 class="form-title">Join a Game</h2>
 
-            <div class="join-room">
-                <input type="text" @bind="JoinRoomCode" placeholder="4-digit room code" class="lobby-input room-code-input"
-                       maxlength="4" title="Enter the 4-digit room code shared by the host" inputmode="numeric" pattern="[0-9]*" />
-            </div>
+                <div class="form-section">
+                    <label class="form-label">Your Name</label>
+                    <input type="text" @bind="PlayerName" placeholder="Enter your name"
+                           class="lobby-input" autofocus maxlength="30" />
+                </div>
 
-            <div class="lobby-actions">
-                <button @onclick="JoinRoom" class="btn btn-secondary"
+                <div class="form-section">
+                    <label class="form-label">Room Code</label>
+                    <input type="text" @bind="JoinRoomCode" placeholder="1234"
+                           class="lobby-input room-code-input"
+                           maxlength="4" inputmode="numeric" pattern="[0-9]*" />
+                </div>
+
+                <button @onclick="JoinRoom" class="btn btn-secondary form-submit-btn"
                         disabled="@(string.IsNullOrWhiteSpace(PlayerName) || string.IsNullOrWhiteSpace(JoinRoomCode))">
                     Join Room
                 </button>
-                <button @onclick="() => GoToScreen(Screen.Home)" class="btn btn-outline">
-                    ← Back
-                </button>
             </div>
-        </div>
-    }
+        }
+
+    </div>
 </div>
 
 @code {
@@ -121,9 +185,13 @@
     private GameStateDto? CurrentState;
     private int MaxPlayers = 2;
     private Screen CurrentScreen = Screen.Home;
+    private bool _isGoingBack = false;
+
+    private string ScreenKey => !string.IsNullOrEmpty(RoomId) ? "room" : CurrentScreen.ToString();
 
     private void GoToScreen(Screen screen)
     {
+        _isGoingBack = screen == Screen.Home;
         ErrorMessage = null;
         CurrentScreen = screen;
     }
@@ -150,7 +218,7 @@
         ErrorMessage = null;
         if (!System.Text.RegularExpressions.Regex.IsMatch(JoinRoomCode, @"^\d{4}$"))
         {
-            ErrorMessage = "Room code must be a 4-digit number.";
+            HandleError("Room code must be a 4-digit number.");
             return;
         }
         await GameService.JoinRoomAsync(JoinRoomCode, PlayerName);
@@ -197,7 +265,29 @@
     {
         ErrorMessage = message;
         InvokeAsync(StateHasChanged);
+
+        Task.Run(async () =>
+        {
+            await Task.Delay(4000);
+            ErrorMessage = null;
+            await InvokeAsync(StateHasChanged);
+        });
     }
+
+    private void DismissError()
+    {
+        ErrorMessage = null;
+    }
+
+    private static string GetAvatarGradient(int index) => index switch
+    {
+        0 => "linear-gradient(135deg, #4CAF50, #2196F3)",
+        1 => "linear-gradient(135deg, #FF5722, #FF9800)",
+        2 => "linear-gradient(135deg, #9C27B0, #3F51B5)",
+        3 => "linear-gradient(135deg, #00BCD4, #4CAF50)",
+        4 => "linear-gradient(135deg, #F44336, #9C27B0)",
+        _ => "linear-gradient(135deg, #FF9800, #FFEB3B)"
+    };
 
     public void Dispose()
     {

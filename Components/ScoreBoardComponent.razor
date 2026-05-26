@@ -1,15 +1,25 @@
 <div class="scoreboard">
     <h3>Players</h3>
     <div class="scoreboard-players">
-        @foreach (var player in Players)
+        @{
+            var ranked = ShowRanks
+                ? Players.OrderBy(p => p.Score).Select((p, i) => (Player: p, Rank: i)).ToList()
+                : Players.Select((p, i) => (Player: p, Rank: -1)).ToList();
+        }
+        @foreach (var entry in ranked)
         {
+            var player = entry.Player;
             <div class="scoreboard-player @(player.Id == CurrentPlayerId ? "current-turn" : "") @(player.IsEliminated ? "eliminated" : "")">
+                @if (ShowRanks && !player.IsEliminated)
+                {
+                    <span class="rank-medal">@(entry.Rank switch { 0 => "🥇", 1 => "🥈", 2 => "🥉", _ => "  " })</span>
+                }
                 <span class="player-name">@player.Name @(!player.IsConnected ? " (DC)" : "")</span>
-                <span class="player-cards">Cards: @player.CardCount</span>
-                <span class="player-score">Score: @player.Score</span>
+                <span class="player-cards">@player.CardCount cards</span>
+                <span class="player-score">@player.Score pts</span>
                 @if (player.IsEliminated)
                 {
-                    <span class="eliminated-badge">ELIMINATED</span>
+                    <span class="eliminated-badge">OUT</span>
                 }
             </div>
         }
@@ -19,4 +29,5 @@
 @code {
     [Parameter] public List<PlayerDto> Players { get; set; } = new();
     [Parameter] public string CurrentPlayerId { get; set; } = "";
+    [Parameter] public bool ShowRanks { get; set; } = false;
 }
